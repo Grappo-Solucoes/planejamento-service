@@ -1,6 +1,7 @@
 package br.com.busco.planejamento.app;
 
 import br.com.busco.planejamento.app.cmd.*;
+import br.com.busco.planejamento.domain.AgendamentoRepository;
 import br.com.busco.planejamento.domain.Periodo;
 import br.com.busco.planejamento.domain.PlanejamentoLote;
 import br.com.busco.planejamento.domain.PlanejamentoLoteRepository;
@@ -16,10 +17,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -27,7 +29,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @ActiveProfiles("test")
-@Transactional
 @DisplayName("PlanejamentoService - Testes de Integração")
 class PlanejamentoServiceIT {
 
@@ -36,6 +37,9 @@ class PlanejamentoServiceIT {
 
     @Autowired
     private PlanejamentoLoteRepository planejamentoLoteRepository;
+
+    @Autowired
+    private AgendamentoRepository agendamentoRepository;
 
     private RotaId rotaId;
     private VeiculoId veiculoId;
@@ -78,6 +82,8 @@ class PlanejamentoServiceIT {
             planejamentoService.handle(ConfirmarPlanejamentoLote.builder().id(id).build());
             planejamento = planejamentoService.buscarPorId(id);
             assertThat(planejamento.getStatus()).isEqualTo(StatusPlanejamentoLote.ATIVO);
+            assertThat(agendamentoRepository.buscarIdFuturosPorPlanejamento(id, LocalDateTime.now()))
+                    .isNotEmpty();
 
             // Suspender
             planejamentoService.handle(SuspenderPlanejamentoLote.builder().id(id).build());
@@ -118,8 +124,11 @@ class PlanejamentoServiceIT {
         @Test
         @DisplayName("Deve gerar agendamentos para todas as datas do período")
         void deveGerarAgendamentosParaTodasDatas() {
-            var inicio = LocalDateTime.of(2024, 1, 1, 10, 0);  // Segunda
-            var fim = LocalDateTime.of(2024, 1, 7, 10, 0);    // Domingo
+            LocalDate primeiraSegunda = LocalDate.now()
+                    .plusDays(1)
+                    .with(java.time.temporal.TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY));
+            var inicio = LocalDateTime.of(primeiraSegunda, LocalTime.of(10, 0));
+            var fim = inicio.plusDays(6);
 
             var criarCmd = CriarPlanejamentoLote.builder()
                     .dataInicio(inicio)
@@ -131,16 +140,19 @@ class PlanejamentoServiceIT {
                     .build();
             var id = planejamentoService.handle(criarCmd);
 
-            // TODO: Implementar método para gerar agendamentos
-            // var agendamentos = planejamentoService.gerarAgendamentos(id);
+            planejamentoService.handle(ConfirmarPlanejamentoLote.builder().id(id).build());
 
-            // Deveria gerar: 1(Seg), 3(Qua), 5(Sex)
-            // assertThat(agendamentos).hasSize(3);
+            var agendamentos = agendamentoRepository.buscarIdFuturosPorPlanejamento(
+                    id,
+                    LocalDateTime.of(2023, 12, 31, 23, 59)
+            );
+
+            assertThat(agendamentos).hasSize(3);
         }
 
         @Test
-        @DisplayName("Não deve gerar agendamentos para planejamento suspenso")
-        void naoDeveGerarAgendamentosParaPlanejamentoSuspenso() {
+        @DisplayName("Não deve confirmar planejamento suspenso")
+        void naoDeveConfirmarPlanejamentoSuspenso() {
             var criarCmd = CriarPlanejamentoLote.builder()
                     .dataInicio(inicio)
                     .dataFim(fim)
@@ -154,7 +166,9 @@ class PlanejamentoServiceIT {
             planejamentoService.handle(ConfirmarPlanejamentoLote.builder().id(id).build());
             planejamentoService.handle(SuspenderPlanejamentoLote.builder().id(id).build());
 
-            // TODO: Verificar que não gera agendamentos quando suspenso
+            assertThatThrownBy(() -> planejamentoService.handle(ConfirmarPlanejamentoLote.builder().id(id).build()))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessage("Somente rascunhos podem ser ativados");
         }
     }
 }

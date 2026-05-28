@@ -67,7 +67,7 @@ public class ExpansaoPlanejamentoDomainService {
     }
 
     private CapacidadeVeiculo buscarCapacidadeVeiculo(VeiculoId veiculoId) {
-        return null;
+        return CapacidadeVeiculo.of(44, 0, 0, 0);
 //        // Integração com serviço de frota
 //        // Cache por 5 minutos para evitar muitas chamadas
 //        return capacidadeVeiculoCache.get(veiculoId);

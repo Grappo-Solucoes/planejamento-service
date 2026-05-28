@@ -6,10 +6,7 @@ import br.com.busco.planejamento.sk.ids.MotoristaId;
 import br.com.busco.planejamento.sk.ids.PlanejamentoLoteId;
 import br.com.busco.planejamento.sk.ids.RotaId;
 import br.com.busco.planejamento.sk.ids.VeiculoId;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
@@ -22,7 +19,7 @@ import static br.com.busco.planejamento.sk.ids.PlanejamentoLoteId.randomId;
 @Table
 @Entity
 @Getter
-@EqualsAndHashCode(of = {"aluno", "viagem"}, callSuper = true)
+@EqualsAndHashCode(of = {"periodo", "recorrencia", "rota", "veiculo", "motorista"}, callSuper = true)
 @NoArgsConstructor(access = AccessLevel.PUBLIC, force = true)
 public final class PlanejamentoLote  extends AbstractAggregateRoot<PlanejamentoLoteId> {
 
@@ -30,8 +27,17 @@ public final class PlanejamentoLote  extends AbstractAggregateRoot<PlanejamentoL
     private StatusPlanejamentoLote status;
     private final Periodo periodo;
     private final RecorrenciaSemanal recorrencia;
+
+    @Embedded
+    @AttributeOverride(name = "uuid", column = @Column(name = "rota"))
     private final RotaId rota;
+
+    @Embedded
+    @AttributeOverride(name = "uuid", column = @Column(name = "veiculo"))
     private final VeiculoId veiculo;
+
+    @Embedded
+    @AttributeOverride(name = "uuid", column = @Column(name = "motorista"))
     private final MotoristaId motorista;
 
     @Builder

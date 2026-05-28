@@ -15,7 +15,7 @@ import static lombok.AccessLevel.PUBLIC;
 
 @Getter
 @Embeddable
-@EqualsAndHashCode(of = {"inicio", "fim"})
+@EqualsAndHashCode(of = {"tipo", "planejamentoId"})
 @NoArgsConstructor(access = PUBLIC, force = true)
 @AllArgsConstructor(access = PRIVATE)
 public class OrigemAgendamento implements ValueObject {

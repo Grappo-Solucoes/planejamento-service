@@ -10,6 +10,7 @@ import br.com.busco.planejamento.domain.AgendamentoRepository;
 import br.com.busco.planejamento.sk.ids.AgendamentoOperacionalId;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -18,6 +19,7 @@ import java.util.List;
 
 //TODO: Implementar Saga
 @Component
+@Profile("!test")
 @RequiredArgsConstructor
 public class AgendamentoAutoProcessamento {
     private final AgendamentoService service;

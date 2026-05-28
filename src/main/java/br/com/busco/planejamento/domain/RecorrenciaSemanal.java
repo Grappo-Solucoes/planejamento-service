@@ -15,7 +15,7 @@ import static lombok.AccessLevel.PUBLIC;
 
 @Getter
 @Embeddable
-@EqualsAndHashCode(of = {"inicio", "fim"})
+@EqualsAndHashCode(of = "diasDaSemana")
 @NoArgsConstructor(access = PUBLIC, force = true)
 @AllArgsConstructor(access = PRIVATE)
 public class RecorrenciaSemanal implements ValueObject {
