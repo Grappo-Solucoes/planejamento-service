@@ -12,6 +12,7 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -47,20 +48,19 @@ public class AgendamentoOperacional extends AbstractAggregateRoot<AgendamentoOpe
     @Embedded
     private CapacidadeVeiculo capacidadeVeiculo;
 
-    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
-    @JoinColumn(name = "agendamento_id")
+    @OneToMany(mappedBy = "agendamento", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
     private Set<AlocacaoPassageiro> alocacoes = new HashSet<>();
 
     @Builder
     private AgendamentoOperacional(RotaId rota, VeiculoId veiculo, MotoristaId motorista, OrigemAgendamento origem, LocalDateTime data, CapacidadeVeiculo capacidadeVeiculo) {
         super(randomId());
-        this.rota = rota;
-        this.veiculo = veiculo;
-        this.motorista = motorista;
-        this.data = data;
-        this.origem = origem;
+        this.rota = Objects.requireNonNull(rota, "Rota é obrigatória");
+        this.veiculo = Objects.requireNonNull(veiculo, "Veículo é obrigatório");
+        this.motorista = Objects.requireNonNull(motorista, "Motorista é obrigatório");
+        this.data = Objects.requireNonNull(data, "Data é obrigatória");
+        this.origem = Objects.requireNonNull(origem, "Origem é obrigatória");
         this.status = EM_ANALISE;
-        this.capacidadeVeiculo = capacidadeVeiculo;
+        this.capacidadeVeiculo = capacidadeVeiculo != null ? capacidadeVeiculo : CapacidadeVeiculo.of(44, 0, 0, 0);
 
         this.registerEvent(AgendamentoCriado.of(this));
     }
@@ -95,6 +95,7 @@ public class AgendamentoOperacional extends AbstractAggregateRoot<AgendamentoOpe
                 .pontoEmbarque(pontoEmbarque)
                 .pontoDesembarque(pontoDesembarque)
                 .build();
+        alocacao.vincularAgendamento(this);
 
         alocacoes.add(alocacao);
 
@@ -222,7 +223,7 @@ public class AgendamentoOperacional extends AbstractAggregateRoot<AgendamentoOpe
     }
 
     public void colocarEmConflito() {
-        if (status == CANCELADO) {
+        if (status != EM_ANALISE) {
             throw new IllegalStateException("Somente agendamentos em análise podem ser marcados com conflito");
         }
 

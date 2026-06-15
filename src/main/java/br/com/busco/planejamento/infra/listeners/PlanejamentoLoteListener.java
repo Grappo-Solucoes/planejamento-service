@@ -11,6 +11,7 @@ import br.com.busco.planejamento.domain.events.PlanejamentoLoteConfirmado;
 import br.com.busco.planejamento.domain.events.PlanejamentoLoteSuspenso;
 import br.com.busco.planejamento.sk.ids.AgendamentoOperacionalId;
 import lombok.AllArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -20,6 +21,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Component
+@Profile("event-listeners")
 @AllArgsConstructor
 public class PlanejamentoLoteListener {
     private final PlanejamentoService service;

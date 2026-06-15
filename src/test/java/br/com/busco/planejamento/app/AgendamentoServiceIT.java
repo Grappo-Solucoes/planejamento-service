@@ -3,7 +3,6 @@ package br.com.busco.planejamento.app;
 import br.com.busco.planejamento.app.cmd.*;
 import br.com.busco.planejamento.domain.AgendamentoOperacional;
 import br.com.busco.planejamento.domain.AgendamentoRepository;
-import br.com.busco.planejamento.domain.OrigemAgendamento;
 import br.com.busco.planejamento.domain.StatusAgendamento;
 import br.com.busco.planejamento.sk.ids.*;
 import jakarta.persistence.EntityManager;
@@ -15,18 +14,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executors;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @ActiveProfiles("test")
-@Transactional
 @DisplayName("AgendamentoService - Testes de Integração")
 class AgendamentoServiceIT {
 
@@ -43,6 +39,8 @@ class AgendamentoServiceIT {
     private VeiculoId veiculoId;
     private MotoristaId motoristaId;
     private LocalDateTime dataFutura;
+    private PontoId pontoEmbarque;
+    private PontoId pontoDesembarque;
 
     @BeforeEach
     void setUp() {
@@ -50,6 +48,8 @@ class AgendamentoServiceIT {
         veiculoId = VeiculoId.randomId();
         motoristaId = MotoristaId.randomId();
         dataFutura = LocalDateTime.now().plusDays(1);
+        pontoEmbarque = PontoId.randomId();
+        pontoDesembarque = PontoId.randomId();
     }
 
     @Nested
@@ -60,12 +60,7 @@ class AgendamentoServiceIT {
         @DisplayName("Deve criar e confirmar agendamento com sucesso")
         void deveCriarEConfirmarAgendamento() {
             // Act - Criar
-            var criarCmd = CriarAgendamento.builder()
-                    .rota(rotaId)
-                    .veiculoPadrao(veiculoId)
-                    .motoristaPadrao(motoristaId)
-                    .data(dataFutura)
-                    .build();
+            var criarCmd = criarAgendamentoComPassageiro();
             var agendamentoId = agendamentoService.handle(criarCmd);
 
             // Assert - Criado
@@ -79,7 +74,6 @@ class AgendamentoServiceIT {
             agendamentoService.handle(confirmarCmd);
 
             // Assert - Confirmado
-            entityManager.flush();
             entityManager.clear();
 
             var agendamentoConfirmado = agendamentoRepository.findById(agendamentoId).orElseThrow();
@@ -90,30 +84,24 @@ class AgendamentoServiceIT {
         @DisplayName("Deve criar, confirmar e realizar agendamento")
         void deveCriarConfirmarERealizarAgendamento() {
             // Criar
-            var criarCmd = CriarAgendamento.builder()
-                    .rota(rotaId)
-                    .veiculoPadrao(veiculoId)
-                    .motoristaPadrao(motoristaId)
-                    .data(dataFutura)
-                    .build();
+            var criarCmd = criarAgendamentoComPassageiro();
             var id = agendamentoService.handle(criarCmd);
 
             // Confirmar
             agendamentoService.handle(ConfirmarAgendamento.builder().id(id).build());
 
-            // Realizar (precisa adicionar método no service)
-            // agendamentoService.handle(RealizarAgendamento.builder().id(id).build());
+            var agendamento = agendamentoRepository.findById(id).orElseThrow();
+            assertThat(agendamento.getStatus()).isEqualTo(StatusAgendamento.CONFIRMADO);
         }
     }
 
     @Nested
-    @DisplayName("Testes de concorrência")
-    class ConcorrenciaTests {
+    @DisplayName("Validações e transições inválidas")
+    class ValidacoesTests {
 
         @Test
-        @DisplayName("Deve prevenir confirmação concorrente do mesmo agendamento")
-        void devePrevenirConfirmacaoConcorrente() throws Exception {
-            // Criar agendamento
+        @DisplayName("Não deve confirmar agendamento sem passageiro")
+        void naoDeveConfirmarSemPassageiro() {
             var criarCmd = CriarAgendamento.builder()
                     .rota(rotaId)
                     .veiculoPadrao(veiculoId)
@@ -122,23 +110,23 @@ class AgendamentoServiceIT {
                     .build();
             var id = agendamentoService.handle(criarCmd);
 
-            var executor = Executors.newFixedThreadPool(2);
-            var confirmarCmd = ConfirmarAgendamento.builder().id(id).build();
+            assertThatThrownBy(() -> agendamentoService.handle(ConfirmarAgendamento.builder().id(id).build()))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessage("Não é possível confirmar agendamento sem passageiros");
 
-            // Tentar confirmar concorrentemente
-            var future1 = CompletableFuture.supplyAsync(() ->
-                    agendamentoService.handle(confirmarCmd), executor);
-            var future2 = CompletableFuture.supplyAsync(() ->
-                    agendamentoService.handle(confirmarCmd), executor);
+            var agendamento = agendamentoRepository.findById(id).orElseThrow();
+            assertThat(agendamento.getStatus()).isEqualTo(StatusAgendamento.EM_ANALISE);
+        }
 
-            // Apenas uma deve ter sucesso
-            var resultados = CompletableFuture.allOf(future1, future2);
+        @Test
+        @DisplayName("Não deve confirmar agendamento duas vezes")
+        void naoDeveConfirmarDuasVezes() {
+            var id = agendamentoService.handle(criarAgendamentoComPassageiro());
+            agendamentoService.handle(ConfirmarAgendamento.builder().id(id).build());
 
-            long sucessos = 0;
-            long falhas = 0;
-
-            // Verificar quantas falharam
-            // Uma deve lançar exceção (agendamento já confirmado)
+            assertThatThrownBy(() -> agendamentoService.handle(ConfirmarAgendamento.builder().id(id).build()))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessage("Somente agendamentos em análise podem ser confirmados");
         }
     }
 
@@ -159,19 +147,28 @@ class AgendamentoServiceIT {
 
             var confirmarCmd = ConfirmarAgendamento.builder().id(id).build();
 
-            // Supondo que politicaDeCapacidade vai lançar exceção
-            // Deve fazer rollback e não persistir mudanças
-            try {
-                agendamentoService.handle(confirmarCmd);
-            } catch (Exception e) {
-                // Esperado
-            }
+            assertThatThrownBy(() -> agendamentoService.handle(confirmarCmd))
+                    .isInstanceOf(IllegalStateException.class);
 
-            entityManager.flush();
             entityManager.clear();
 
             var agendamento = agendamentoRepository.findById(id).orElseThrow();
             assertThat(agendamento.getStatus()).isEqualTo(StatusAgendamento.EM_ANALISE);
         }
+    }
+
+    private CriarAgendamento criarAgendamentoComPassageiro() {
+        return CriarAgendamento.builder()
+                .rota(rotaId)
+                .veiculoPadrao(veiculoId)
+                .motoristaPadrao(motoristaId)
+                .data(dataFutura)
+                .passageiros(Set.of(AlocarPassageiro.builder()
+                        .passageiroId(PassageiroId.randomId())
+                        .tipo(br.com.busco.planejamento.domain.TipoPassageiro.SENTADO)
+                        .pontoEmbarque(pontoEmbarque)
+                        .pontoDesembarque(pontoDesembarque)
+                        .build()))
+                .build();
     }
 }

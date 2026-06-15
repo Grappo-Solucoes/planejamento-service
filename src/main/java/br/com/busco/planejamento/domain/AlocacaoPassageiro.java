@@ -5,6 +5,7 @@ import br.com.busco.planejamento.sk.ddd.AbstractEntity;
 import br.com.busco.planejamento.sk.ids.AlocacaoPassageiroId;
 import br.com.busco.planejamento.sk.ids.PassageiroId;
 import br.com.busco.planejamento.sk.ids.PontoId;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -32,6 +33,11 @@ public class AlocacaoPassageiro extends AbstractEntity<AlocacaoPassageiroId> {
     @AttributeOverride(name = "uuid", column = @Column(name = "ponto_desembarque_id"))
     private PontoId pontoDesembarque;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "agendamento_id", nullable = false)
+    @JsonIgnore
+    private AgendamentoOperacional agendamento;
+
     @Enumerated(EnumType.STRING)
     private StatusAlocacao status;
 
@@ -58,6 +64,10 @@ public class AlocacaoPassageiro extends AbstractEntity<AlocacaoPassageiroId> {
         this.pontoEmbarque = pontoEmbarque;
         this.pontoDesembarque = pontoDesembarque;
         this.status = StatusAlocacao.RESERVADA;
+    }
+
+    void vincularAgendamento(AgendamentoOperacional agendamento) {
+        this.agendamento = Objects.requireNonNull(agendamento, "Agendamento é obrigatório");
     }
 
     public void confirmar() {

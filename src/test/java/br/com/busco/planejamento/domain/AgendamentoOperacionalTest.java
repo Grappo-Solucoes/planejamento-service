@@ -2,7 +2,9 @@ package br.com.busco.planejamento.domain;
 
 import br.com.busco.planejamento.domain.exceptions.SomenteAgendamentosEmLotePodemSerCancelados;
 import br.com.busco.planejamento.sk.ids.MotoristaId;
+import br.com.busco.planejamento.sk.ids.PassageiroId;
 import br.com.busco.planejamento.sk.ids.PlanejamentoLoteId;
+import br.com.busco.planejamento.sk.ids.PontoId;
 import br.com.busco.planejamento.sk.ids.RotaId;
 import br.com.busco.planejamento.sk.ids.VeiculoId;
 import org.junit.jupiter.api.BeforeEach;
@@ -105,6 +107,16 @@ class AgendamentoOperacionalTest {
             assertThatThrownBy(agendamento::confirmar)
                     .isInstanceOf(IllegalStateException.class);
         }
+
+        @Test
+        @DisplayName("Não deve confirmar agendamento sem passageiros")
+        void naoDeveConfirmarAgendamentoSemPassageiros() {
+            var agendamento = criarAgendamentoSemPassageiro();
+
+            assertThatThrownBy(agendamento::confirmar)
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessage("Não é possível confirmar agendamento sem passageiros");
+        }
     }
 
     @Nested
@@ -164,6 +176,7 @@ class AgendamentoOperacionalTest {
                     .data(dataFutura)
                     .origem(OrigemAgendamento.lote(planejamentoId))
                     .build();
+            alocarPassageiro(agendamento);
             agendamento.confirmar();
 
             agendamento.cancelarPorPlanejamento();
@@ -182,13 +195,13 @@ class AgendamentoOperacionalTest {
                     .data(dataFutura)
                     .origem(OrigemAgendamento.lote(planejamentoId))
                     .build();
+            alocarPassageiro(agendamento);
             agendamento.confirmar();
             agendamento.realizar(); // FIXME: precisa corrigir o método realizar primeiro
 
-            // Após corrigir realizar(), este teste deve passar
-            // assertThatThrownBy(agendamento::cancelarPorPlanejamento)
-            //         .isInstanceOf(RegraDeDominioException.class)
-            //         .hasMessage("Não é possível cancelar agendamento já realizado");
+            assertThatThrownBy(agendamento::cancelarPorPlanejamento)
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessage("Não é possível cancelar agendamento já realizado");
         }
     }
 
@@ -303,6 +316,12 @@ class AgendamentoOperacionalTest {
     }
 
     private AgendamentoOperacional criarAgendamentoValido() {
+        var agendamento = criarAgendamentoSemPassageiro();
+        alocarPassageiro(agendamento);
+        return agendamento;
+    }
+
+    private AgendamentoOperacional criarAgendamentoSemPassageiro() {
         return AgendamentoOperacional.builder()
                 .rota(rotaId)
                 .veiculo(veiculoId)
@@ -310,5 +329,14 @@ class AgendamentoOperacionalTest {
                 .data(dataFutura)
                 .origem(OrigemAgendamento.avulso())
                 .build();
+    }
+
+    private void alocarPassageiro(AgendamentoOperacional agendamento) {
+        agendamento.alocarPassageiro(
+                PassageiroId.randomId(),
+                PontoId.randomId(),
+                PontoId.randomId(),
+                TipoPassageiro.SENTADO
+        );
     }
 }

@@ -3,11 +3,12 @@ package br.com.busco.planejamento.app;
 import br.com.busco.planejamento.app.cmd.*;
 import br.com.busco.planejamento.domain.AgendamentoOperacional;
 import br.com.busco.planejamento.domain.AgendamentoRepository;
+import br.com.busco.planejamento.domain.CapacidadeVeiculo;
 import br.com.busco.planejamento.domain.OrigemAgendamento;
 import br.com.busco.planejamento.domain.policy.PoliticaDeCapacidade;
 import br.com.busco.planejamento.domain.policy.PoliticaDeConflito;
 import br.com.busco.planejamento.domain.policy.PoliticaDeConflitoTemporal;
-import br.com.busco.planejamento.sk.ids.AgendamentoOperacionalId;
+import br.com.busco.planejamento.sk.ids.*;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.AllArgsConstructor;
 import lombok.extern.java.Log;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
 
 import static jakarta.persistence.LockModeType.PESSIMISTIC_READ;
+import static java.util.Objects.requireNonNull;
 import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
 @AllArgsConstructor
@@ -36,6 +38,10 @@ public class AgendamentoService {
     @NonNull
     @Lock(PESSIMISTIC_READ)
     public AgendamentoOperacionalId handle(CriarAgendamento cmd) {
+        requireNonNull(cmd.getRota(), "Rota é obrigatória");
+        requireNonNull(cmd.getVeiculoPadrao(), "Veículo é obrigatório");
+        requireNonNull(cmd.getMotoristaPadrao(), "Motorista é obrigatório");
+        requireNonNull(cmd.getData(), "Data é obrigatória");
 
         AgendamentoOperacional agendamento = AgendamentoOperacional.builder()
                 .rota(cmd.getRota())
@@ -43,8 +49,42 @@ public class AgendamentoService {
                 .veiculo(cmd.getVeiculoPadrao())
                 .data(cmd.getData())
                 .origem(OrigemAgendamento.avulso())
+                .capacidadeVeiculo(CapacidadeVeiculo.of(44, 0, 0, 0))
                 .build();
+        AgendamentoOperacional salvo = repository.save(agendamento);
+
+        if (cmd.getPassageiros() != null) {
+            cmd.getPassageiros().forEach(passageiro ->
+                    alocarPassageiro(salvo, passageiro)
+            );
+        }
+
+        return repository.save(salvo).getId();
+    }
+
+    @NonNull
+    @Lock(PESSIMISTIC_READ)
+    public AgendamentoOperacionalId handle(AlocarPassageiro cmd) {
+        AgendamentoOperacional agendamento = repository.findById(cmd.getAgendamentoId())
+                .orElseThrow(() -> new EntityNotFoundException("Agendamento não encontrada"));
+
+        alocarPassageiro(agendamento, cmd);
+
         return repository.save(agendamento).getId();
+    }
+
+    private void alocarPassageiro(AgendamentoOperacional agendamento, AlocarPassageiro cmd) {
+        requireNonNull(cmd.getPassageiroId(), "Passageiro é obrigatório");
+        requireNonNull(cmd.getTipo(), "Tipo do passageiro é obrigatório");
+        requireNonNull(cmd.getPontoEmbarque(), "Ponto de embarque é obrigatório");
+        requireNonNull(cmd.getPontoDesembarque(), "Ponto de desembarque é obrigatório");
+
+        agendamento.alocarPassageiro(
+                cmd.getPassageiroId(),
+                cmd.getPontoEmbarque(),
+                cmd.getPontoDesembarque(),
+                cmd.getTipo()
+        );
     }
 
     @NonNull
