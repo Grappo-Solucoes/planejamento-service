@@ -20,14 +20,16 @@ import java.util.List;
 import static jakarta.persistence.LockModeType.PESSIMISTIC_READ;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
-import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
 @AllArgsConstructor
 
 @Log
 @Service
 @Validated
-@Transactional(propagation = REQUIRES_NEW)
+// Propagação REQUIRED: no caminho de comando o serviço participa da transação
+// do ProcessamentoComandoService, garantindo estado + outbox + marcador de
+// inbox atômicos (CONTRACT §6).
+@Transactional
 public class PlanejamentoService {
 
     private final AgendamentoRepository agendamentoRepository;
