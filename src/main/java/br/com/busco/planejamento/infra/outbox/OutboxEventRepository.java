@@ -23,4 +23,6 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, String
             @Param("agora") LocalDateTime agora,
             Pageable pageable
     );
+
+    List<OutboxEvent> findByCorrelationIdOrderByCreatedAtAsc(String correlationId);
 }

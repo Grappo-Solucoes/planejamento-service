@@ -111,6 +111,84 @@ class PlanejamentoLoteTest {
     }
 
     @Nested
+    @DisplayName("Testes de edição")
+    class EdicaoTests {
+
+        @Test
+        @DisplayName("Deve editar planejamento em rascunho e registrar evento")
+        void deveEditarPlanejamentoRascunho() {
+            var planejamento = criarPlanejamentoValido();
+
+            var novaRota = RotaId.randomId();
+            var novoInicio = inicio.plusDays(1);
+            var novoFim = fim.plusDays(1);
+            planejamento.editar(
+                    Periodo.of(novoInicio, novoFim),
+                    RecorrenciaSemanal.of(Set.of(DayOfWeek.TUESDAY)),
+                    novaRota,
+                    veiculoId,
+                    motoristaId
+            );
+
+            assertThat(planejamento.getStatus()).isEqualTo(StatusPlanejamentoLote.RASCUNHO);
+            assertThat(planejamento.getRota()).isEqualTo(novaRota);
+            assertThat(planejamento.getPeriodo().getInicio()).isEqualTo(novoInicio);
+            assertThat(planejamento.getPeriodo().getFim()).isEqualTo(novoFim);
+            assertThat(planejamento.getRecorrencia().getDiasDaSemana()).containsExactly(DayOfWeek.TUESDAY);
+        }
+
+        @Test
+        @DisplayName("Deve editar planejamento ativo")
+        void deveEditarPlanejamentoAtivo() {
+            var planejamento = criarPlanejamentoValido();
+            planejamento.ativar();
+
+            planejamento.editar(
+                    Periodo.of(inicio.plusDays(2), fim.plusDays(2)),
+                    RecorrenciaSemanal.of(Set.of(DayOfWeek.SATURDAY)),
+                    RotaId.randomId(),
+                    veiculoId,
+                    motoristaId
+            );
+
+            assertThat(planejamento.getStatus()).isEqualTo(StatusPlanejamentoLote.ATIVO);
+        }
+
+        @Test
+        @DisplayName("Não deve editar planejamento cancelado")
+        void naoDeveEditarPlanejamentoCancelado() {
+            var planejamento = criarPlanejamentoValido();
+            planejamento.cancelar(0);
+
+            assertThatThrownBy(() -> planejamento.editar(
+                    Periodo.of(inicio, fim),
+                    RecorrenciaSemanal.of(Set.of(DayOfWeek.MONDAY)),
+                    rotaId,
+                    veiculoId,
+                    motoristaId
+            ))
+                    .isInstanceOf(IllegalStateException.class)
+                    .hasMessage("Somente planejamentos em rascunho ou ativos podem ser editados");
+        }
+
+        @Test
+        @DisplayName("Não deve editar planejamento suspenso")
+        void naoDeveEditarPlanejamentoSuspenso() {
+            var planejamento = criarPlanejamentoValido();
+            planejamento.ativar();
+            planejamento.suspender();
+
+            assertThatThrownBy(() -> planejamento.editar(
+                    Periodo.of(inicio, fim),
+                    RecorrenciaSemanal.of(Set.of(DayOfWeek.MONDAY)),
+                    rotaId,
+                    veiculoId,
+                    motoristaId
+            )).isInstanceOf(IllegalStateException.class);
+        }
+    }
+
+    @Nested
     @DisplayName("Testes de geração de datas")
     class GeracaoDatasTests {
 
