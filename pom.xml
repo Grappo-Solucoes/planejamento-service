@@ -162,6 +162,11 @@
             <artifactId>rabbitmq</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- Validação dos JSON Schemas do contrato v1 (tarefa 2.3) -->
         <dependency>
             <groupId>com.networknt</groupId>
