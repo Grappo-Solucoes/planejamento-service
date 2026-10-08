@@ -8,6 +8,8 @@ import br.com.busco.planejamento.infra.events.EnvelopeEvento;
 import br.com.busco.planejamento.infra.events.EventosV1;
 import br.com.busco.planejamento.infra.events.IntegrationEvent;
 import br.com.busco.planejamento.infra.events.MensagemNaoProcessavelException;
+import br.com.busco.planejamento.infra.inbox.ProcessedEvent;
+import br.com.busco.planejamento.infra.inbox.ProcessedEventRepository;
 import br.com.busco.planejamento.infra.outbox.OutboxRecorder;
 import br.com.busco.planejamento.sk.ddd.TenantProvider;
 import br.com.busco.planejamento.sk.ids.MotoristaId;
@@ -55,10 +57,17 @@ public class ProcessamentoComandoService {
     private final PlanejamentoService planejamentoService;
     private final OutboxRecorder outboxRecorder;
     private final TenantProvider tenantProvider;
+    private final ProcessedEventRepository processedEventRepository;
 
     @Transactional
     public void processar(EnvelopeEvento envelope) {
         validar(envelope);
+
+        if (processedEventRepository.existsById(envelope.eventId())) {
+            log.info("Evento {} ({}) já processado; reentrega confirmada sem efeito",
+                    envelope.eventId(), envelope.eventType());
+            return;
+        }
 
         try {
             despachar(envelope);
@@ -69,6 +78,12 @@ public class ProcessamentoComandoService {
             log.warn("Comando {} rejeitado: {}", envelope.eventType(), e.getMessage());
             registrarFalha(envelope, e);
         }
+
+        processedEventRepository.save(ProcessedEvent.builder()
+                .eventId(envelope.eventId())
+                .eventType(envelope.eventType())
+                .processedAt(LocalDateTime.now())
+                .build());
     }
 
     private void validar(EnvelopeEvento envelope) {

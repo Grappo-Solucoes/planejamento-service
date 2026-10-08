@@ -6,6 +6,7 @@ import br.com.busco.planejamento.domain.AgendamentoRepository;
 import br.com.busco.planejamento.domain.StatusAgendamento;
 import br.com.busco.planejamento.infra.events.EventoJson;
 import br.com.busco.planejamento.infra.events.EventosV1;
+import br.com.busco.planejamento.infra.inbox.ProcessedEventRepository;
 import br.com.busco.planejamento.infra.outbox.OutboxEvent;
 import br.com.busco.planejamento.infra.outbox.OutboxEventRepository;
 import br.com.busco.planejamento.infra.outbox.OutboxPublisher;
@@ -82,6 +83,9 @@ class PlanejamentoCommandsIT {
 
     @Autowired
     private OutboxEventRepository outboxEventRepository;
+
+    @Autowired
+    private ProcessedEventRepository processedEventRepository;
 
     @Autowired
     private PlanejamentoService planejamentoService;
@@ -218,6 +222,26 @@ class PlanejamentoCommandsIT {
         assertThat(falha.path("payload").path("motivo").asText()).isNotBlank();
     }
 
+    @Test
+    @DisplayName("Reentrega do mesmo eventId confirma sem duplicar efeito (inbox)")
+    void reentregaDoMesmoComandoNaoDuplicaEfeito() {
+        PlanejamentoLoteId loteId = PlanejamentoLoteId.randomId();
+        String eventId = UUID.randomUUID().toString();
+
+        publicar(EventosV1.LOTE_CRIAR_SOLICITADO, loteId, payloadLote(loteId, rotaId, Set.of(1, 3, 5)), eventId);
+        List<OutboxEvent> eventos = aguardarResultado(loteId, EventosV1.LOTE_FALHA, "planejamento.lote.criado", "planejamento.lote.criado");
+        assertThat(eventos).hasSize(1);
+        assertThat(processedEventRepository.findById(eventId)).isPresent();
+
+        // reentrega com o mesmo eventId: ack sem efeito
+        publicar(EventosV1.LOTE_CRIAR_SOLICITADO, loteId, payloadLote(loteId, rotaId, Set.of(1, 3, 5)), eventId);
+        aguardarConsumoDosComandos();
+
+        assertThat(outboxEventRepository.findByCorrelationIdOrderByCreatedAtAsc(loteId.toUUID())).hasSize(1);
+        assertThat(processedEventRepository.findById(eventId)).isPresent();
+        assertThat(planejamentoService.buscarPorId(loteId).getId()).isEqualTo(loteId);
+    }
+
     // --- helpers ---
 
     private PlanejamentoLoteId criarLote() {
@@ -240,8 +264,12 @@ class PlanejamentoCommandsIT {
     }
 
     private void publicar(String eventType, PlanejamentoLoteId loteId, Map<String, Object> payload) {
+        publicar(eventType, loteId, payload, UUID.randomUUID().toString());
+    }
+
+    private void publicar(String eventType, PlanejamentoLoteId loteId, Map<String, Object> payload, String eventId) {
         ObjectNode envelope = eventoJson.mapper().createObjectNode();
-        envelope.put("eventId", UUID.randomUUID().toString());
+        envelope.put("eventId", eventId);
         envelope.put("eventType", eventType);
         envelope.put("version", EventosV1.VERSAO);
         envelope.put("occurredOn", FORMATO_INSTANTE_UTC.format(Instant.now()));
@@ -348,5 +376,23 @@ class PlanejamentoCommandsIT {
             Thread.currentThread().interrupt();
             throw new IllegalStateException("Interrompido aguardando resultado", e);
         }
+    }
+
+    private void aguardarConsumoDosComandos() {
+        long deadline = System.nanoTime() + TIMEOUT.toNanos();
+        while (System.nanoTime() < deadline) {
+            if (mensagensNaFila(RabbitTopologia.COMMANDS_QUEUE) == 0) {
+                // margem para o processamento assíncrono do listener terminar
+                dormir(1000);
+                return;
+            }
+            dormir(100);
+        }
+        fail("Fila de comandos não foi consumida dentro do timeout");
+    }
+
+    private long mensagensNaFila(String fila) {
+        Long total = rabbitTemplate.execute(channel -> channel.messageCount(fila));
+        return total == null ? 0 : total;
     }
 }
