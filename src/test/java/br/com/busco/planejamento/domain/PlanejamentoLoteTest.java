@@ -170,7 +170,7 @@ class PlanejamentoLoteTest {
         @DisplayName("Não deve gerar datas para planejamento cancelado")
         void naoDeveGerarDatasParaPlanejamentoCancelado() {
             var planejamento = criarPlanejamentoValido();
-            planejamento.cancelar();
+            planejamento.cancelar(0);
 
             assertThatThrownBy(planejamento::gerarDatas)
                     .isInstanceOf(IllegalStateException.class)

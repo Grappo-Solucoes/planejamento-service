@@ -2,12 +2,12 @@ package br.com.busco.planejamento.domain.events;
 
 import br.com.busco.planejamento.domain.AgendamentoOperacional;
 import br.com.busco.planejamento.sk.ddd.DomainEvent;
-import br.com.busco.planejamento.sk.ids.AgendamentoOperacionalId;
+import br.com.busco.planejamento.sk.ids.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 
 import java.time.Instant;
-import java.util.Set;
+import java.time.LocalDateTime;
 
 @Data
 @Builder
@@ -18,10 +18,24 @@ import java.util.Set;
 public class AgendamentoCriado implements DomainEvent {
     @NotNull(message = "O parâmetro 'id' é obrigatório!")
     private AgendamentoOperacionalId id;
+    private PlanejamentoLoteId loteId;
+    private LocalDateTime data;
+    private RotaId rota;
+    private VeiculoId veiculo;
+    private MotoristaId motorista;
     private Instant occurredOn;
 
     public static AgendamentoCriado of(AgendamentoOperacional agendamento) {
-        return new AgendamentoCriado(agendamento.getId(), Instant.now());
+        PlanejamentoLoteId loteId = agendamento.getOrigem() != null
+                ? agendamento.getOrigem().getPlanejamentoId()
+                : null;
+        return new AgendamentoCriado(
+                agendamento.getId(),
+                loteId,
+                agendamento.getData(),
+                agendamento.getRota(),
+                agendamento.getVeiculo(),
+                agendamento.getMotorista(),
+                Instant.now());
     }
 }
-

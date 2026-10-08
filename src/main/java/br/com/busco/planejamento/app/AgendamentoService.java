@@ -137,6 +137,16 @@ public class AgendamentoService {
         return repository.save(agendamento).getId();
     }
 
+    @NonNull
+    @Lock(PESSIMISTIC_READ)
+    public AgendamentoOperacionalId handle(CancelarAgendamentoPorEdicao cmd) {
+        AgendamentoOperacional agendamento = repository.findById(cmd.getId())
+                .orElseThrow(() -> new EntityNotFoundException("Agendamento não encontrada"));
+        agendamento.cancelarPorEdicao();
+
+        return repository.save(agendamento).getId();
+    }
+
 
     @NonNull
     public AgendamentoOperacionalId handle(ColocarAgendamentoEmConflito cmd) {

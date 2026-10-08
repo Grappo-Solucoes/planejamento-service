@@ -20,6 +20,10 @@
         <mapstruct.version>1.5.5.Final</mapstruct.version>
         <spring-modulith.version>1.2.2</spring-modulith.version>
         <flyway.version>10.15.0</flyway.version>
+        <!-- docker-java mais novo (compatível com o Docker da infra de CI/local) -->
+        <testcontainers.version>1.20.4</testcontainers.version>
+        <!-- API mínima do Docker aceita pelos engines modernos (>=1.40) e antigos (<=1.41) -->
+        <docker.api.version>1.40</docker.api.version>
     </properties>
     <dependencies>
         <dependency>
@@ -141,6 +145,23 @@
             <artifactId>postgresql</artifactId>
             <version>42.7.2</version> <!-- Use the latest version compatible with your Spring Boot -->
         </dependency>
+
+        <!-- Testes de integração com Testcontainers -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>rabbitmq</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <dependencyManagement>
@@ -166,6 +187,10 @@
                         <include>**/*Tests.java</include>
                         <include>**/*IT.java</include>
                     </includes>
+                    <systemPropertyVariables>
+                        <!-- Docker 29+ exige API >= 1.40; engines antigos aceitam até 1.41 -->
+                        <api.version>${docker.api.version}</api.version>
+                    </systemPropertyVariables>
                 </configuration>
             </plugin>
             <plugin>

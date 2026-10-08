@@ -214,6 +214,31 @@ public class AgendamentoOperacional extends AbstractAggregateRoot<AgendamentoOpe
         registerEvent(AgendamentoCanceladoPorPlanejamento.of(this));
     }
 
+    /**
+     * Cancelamento disparado pela edição do lote: mesma proteção de
+     * {@link #cancelarPorPlanejamento()}, mas com o motivo do contrato v1
+     * ("Cancelado por edição") e o evento correspondente.
+     */
+    public void cancelarPorEdicao() {
+
+        if (origem.ehAvulso()) {
+            throw new SomenteAgendamentosEmLotePodemSerCancelados();
+        }
+
+        if (status == REALIZADO) {
+            throw new NaoPossivelCancelarAgendamentosRealizados();
+        }
+
+        if (status == StatusAgendamento.CANCELADO) {
+            return;
+        }
+
+        this.status = StatusAgendamento.CANCELADO;
+        alocacoes.forEach(a -> a.cancelar("Cancelado por edição", "SISTEMA"));
+
+        registerEvent(AgendamentoCanceladoPorEdicao.of(this));
+    }
+
     public void revalidar() {
         if (status != CONFIRMADO) {
             throw new IllegalStateException("Somente confirmados podem ser revalidados");

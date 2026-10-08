@@ -25,6 +25,10 @@ public interface AgendamentoRepository {
     List<AgendamentoOperacionalId> buscarIdFuturosPorPlanejamento( @Param("planejamento") PlanejamentoLoteId planejamento,
                                                                    @Param("data") LocalDateTime data);
 
+    @Query("SELECT a.id FROM AgendamentoOperacional a WHERE a.origem.planejamentoId = :planejamento AND a.data > :data AND a.status <> br.com.busco.planejamento.domain.StatusAgendamento.REALIZADO AND a.status <> br.com.busco.planejamento.domain.StatusAgendamento.CANCELADO")
+    List<AgendamentoOperacionalId> buscarIdFuturosNaoRealizadosPorPlanejamento( @Param("planejamento") PlanejamentoLoteId planejamento,
+                                                                                @Param("data") LocalDateTime data);
+
 //    boolean existeSobreposicao(RotaId rota, LocalDateTime inicio, LocalDateTime fim, AgendamentoOperacionalId ignorar);
 
 }

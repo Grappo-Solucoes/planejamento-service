@@ -2,8 +2,6 @@ package br.com.busco.planejamento.app;
 
 import br.com.busco.planejamento.app.cmd.*;
 import br.com.busco.planejamento.domain.*;
-import br.com.busco.planejamento.domain.policy.PoliticaDeCapacidade;
-import br.com.busco.planejamento.domain.policy.PoliticaDeConflito;
 import br.com.busco.planejamento.domain.services.ExpansaoPlanejamentoDomainService;
 import br.com.busco.planejamento.sk.ids.AgendamentoOperacionalId;
 import br.com.busco.planejamento.sk.ids.PlanejamentoLoteId;
@@ -44,6 +42,7 @@ public class PlanejamentoService {
         RecorrenciaSemanal recorrenciaSemanal = RecorrenciaSemanal.of(cmd.getDiasDaSemana());
 
         PlanejamentoLote planejamento = PlanejamentoLote.builder()
+                .id(cmd.getLoteId())
                 .periodo(periodo)
                 .recorrencia(recorrenciaSemanal)
                 .rota(cmd.getRota())
@@ -53,13 +52,22 @@ public class PlanejamentoService {
         return repository.save(planejamento).getId();
     }
 
+    /**
+     * Confirma o lote e expande a agenda em um único ponto do fluxo (o
+     * listener assíncrono de dupla expansão foi removido). O evento
+     * {@code lote.confirmado} carrega a contagem de agendamentos gerados
+     * nesta confirmação.
+     */
     @NonNull
     @Lock(PESSIMISTIC_READ)
     public PlanejamentoLoteId handle(ConfirmarPlanejamentoLote cmd) {
         PlanejamentoLote planejamentoLote = buscarPorId(cmd.getId());
         planejamentoLote.ativar();
 
-        expansaoPlanejamentoDomainService.expandir(planejamentoLote, LocalDateTime.now());
+        ExpansaoPlanejamentoDomainService.ExpansaoResultado resultado =
+                expansaoPlanejamentoDomainService.expandir(planejamentoLote, LocalDateTime.now());
+
+        planejamentoLote.registrarConfirmacao(resultado.agendamentosCriados().size());
 
         return repository.save(planejamentoLote).getId();
     }
@@ -69,7 +77,7 @@ public class PlanejamentoService {
     public PlanejamentoLoteId handle(CancelarPlanejamentoLote cmd) {
         PlanejamentoLote planejamentoLote = buscarPorId(cmd.getId());
         List<AgendamentoOperacionalId> agendamentosFuturos =
-                agendamentoRepository.buscarIdFuturosPorPlanejamento(
+                agendamentoRepository.buscarIdFuturosNaoRealizadosPorPlanejamento(
                         planejamentoLote.getId(),
                         LocalDateTime.now()
                 );
@@ -78,8 +86,41 @@ public class PlanejamentoService {
             agendamentoService.handle(CancelarAgendamentoPorLote.builder().id(id).build());
         }
 
+        planejamentoLote.cancelar(agendamentosFuturos.size());
 
-        planejamentoLote.cancelar();
+        return repository.save(planejamentoLote).getId();
+    }
+
+    /**
+     * Edição dos campos de agenda do lote (CONTRACT §5): aplica os novos
+     * campos, cancela os agendamentos futuros não executados (status diferente
+     * de REALIZADO) e re-expande a agenda quando o lote está ATIVO.
+     */
+    @NonNull
+    @Lock(PESSIMISTIC_READ)
+    public PlanejamentoLoteId handle(EditarPlanejamentoLote cmd) {
+        PlanejamentoLote planejamentoLote = buscarPorId(cmd.getId());
+
+        Periodo periodo = Periodo.of(cmd.getDataInicio(), cmd.getDataFim());
+        RecorrenciaSemanal recorrenciaSemanal = RecorrenciaSemanal.of(cmd.getDiasDaSemana());
+
+        boolean estavaAtivo = planejamentoLote.getStatus() == StatusPlanejamentoLote.ATIVO;
+
+        planejamentoLote.editar(periodo, recorrenciaSemanal, cmd.getRota(), cmd.getVeiculo(), cmd.getMotorista());
+
+        if (estavaAtivo) {
+            List<AgendamentoOperacionalId> agendamentosFuturos =
+                    agendamentoRepository.buscarIdFuturosNaoRealizadosPorPlanejamento(
+                            planejamentoLote.getId(),
+                            LocalDateTime.now()
+                    );
+
+            for (AgendamentoOperacionalId id : agendamentosFuturos) {
+                agendamentoService.handle(CancelarAgendamentoPorEdicao.builder().id(id).build());
+            }
+
+            expansaoPlanejamentoDomainService.expandir(planejamentoLote, LocalDateTime.now());
+        }
 
         return repository.save(planejamentoLote).getId();
     }

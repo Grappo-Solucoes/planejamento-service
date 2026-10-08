@@ -1,6 +1,7 @@
 package br.com.busco.planejamento.app.cmd;
 
 import br.com.busco.planejamento.sk.ids.MotoristaId;
+import br.com.busco.planejamento.sk.ids.PlanejamentoLoteId;
 import br.com.busco.planejamento.sk.ids.RotaId;
 import br.com.busco.planejamento.sk.ids.VeiculoId;
 import lombok.*;
@@ -15,6 +16,7 @@ import java.util.Set;
 @AllArgsConstructor
 @NoArgsConstructor
 public class CriarPlanejamentoLote {
+    private PlanejamentoLoteId loteId;
     private RotaId rota;
     private VeiculoId veiculo;
     private MotoristaId motorista;

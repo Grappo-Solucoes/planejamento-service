@@ -17,10 +17,10 @@ import java.time.Instant;
 public class PlanejamentoLoteCancelado implements DomainEvent {
     @NotNull(message = "O parâmetro 'id' é obrigatório!")
     private PlanejamentoLoteId id;
+    private int quantidadeAgendamentosCancelados;
     private Instant occurredOn;
 
-    public static PlanejamentoLoteCancelado of(PlanejamentoLote planejamentoLote) {
-        return new PlanejamentoLoteCancelado(planejamentoLote.getId(), Instant.now());
+    public static PlanejamentoLoteCancelado of(PlanejamentoLote planejamentoLote, int quantidadeAgendamentosCancelados) {
+        return new PlanejamentoLoteCancelado(planejamentoLote.getId(), quantidadeAgendamentosCancelados, Instant.now());
     }
 }
-

@@ -9,7 +9,6 @@ import br.com.busco.planejamento.sk.ids.VeiculoId;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,30 +24,31 @@ public final class PlanejamentoLote  extends AbstractAggregateRoot<PlanejamentoL
 
     @Enumerated(EnumType.STRING)
     private StatusPlanejamentoLote status;
-    private final Periodo periodo;
-    private final RecorrenciaSemanal recorrencia;
+    private Periodo periodo;
+    private RecorrenciaSemanal recorrencia;
 
     @Embedded
     @AttributeOverride(name = "uuid", column = @Column(name = "rota"))
-    private final RotaId rota;
+    private RotaId rota;
 
     @Embedded
     @AttributeOverride(name = "uuid", column = @Column(name = "veiculo"))
-    private final VeiculoId veiculo;
+    private VeiculoId veiculo;
 
     @Embedded
     @AttributeOverride(name = "uuid", column = @Column(name = "motorista"))
-    private final MotoristaId motorista;
+    private MotoristaId motorista;
 
     @Builder
     private PlanejamentoLote(
+            PlanejamentoLoteId id,
             Periodo periodo,
             RecorrenciaSemanal recorrencia,
             RotaId rota,
             VeiculoId veiculo,
             MotoristaId motorista
     ) {
-        super(randomId());
+        super(id != null ? id : randomId());
         this.status = StatusPlanejamentoLote.RASCUNHO;
         this.periodo = periodo;
         this.recorrencia = recorrencia;
@@ -59,12 +59,20 @@ public final class PlanejamentoLote  extends AbstractAggregateRoot<PlanejamentoL
         this.registerEvent(PlanejamentoLoteCriado.of(this));
     }
 
+    /**
+     * Ativa o lote. O evento de confirmação é registrado depois da expansão,
+     * com a contagem de agendamentos gerados (ver
+     * {@link #registrarConfirmacao(int)}).
+     */
     public void ativar() {
         if (status != StatusPlanejamentoLote.RASCUNHO) {
             throw new IllegalStateException("Somente rascunhos podem ser ativados");
         }
         this.status = StatusPlanejamentoLote.ATIVO;
-        this.registerEvent(PlanejamentoLoteConfirmado.of(this));
+    }
+
+    public void registrarConfirmacao(int quantidadeAgendamentos) {
+        this.registerEvent(PlanejamentoLoteConfirmado.of(this, quantidadeAgendamentos));
     }
 
     public void suspender() {
@@ -76,9 +84,33 @@ public final class PlanejamentoLote  extends AbstractAggregateRoot<PlanejamentoL
 
     }
 
-    public void cancelar() {
+    public void cancelar(int quantidadeAgendamentosCancelados) {
         this.status = StatusPlanejamentoLote.CANCELADO;
-        this.registerEvent(PlanejamentoLoteCancelado.of(this));
+        this.registerEvent(PlanejamentoLoteCancelado.of(this, quantidadeAgendamentosCancelados));
+    }
+
+    /**
+     * Edição dos campos de agenda do lote (CONTRACT §5). Permitida em
+     * RASCUNHO e ATIVO; a re-expansão e o cancelamento dos agendamentos
+     * futuros são orquestrados pelo serviço de aplicação.
+     */
+    public void editar(
+            Periodo periodo,
+            RecorrenciaSemanal recorrencia,
+            RotaId rota,
+            VeiculoId veiculo,
+            MotoristaId motorista
+    ) {
+        if (status != StatusPlanejamentoLote.RASCUNHO && status != StatusPlanejamentoLote.ATIVO) {
+            throw new IllegalStateException("Somente planejamentos em rascunho ou ativos podem ser editados");
+        }
+        this.periodo = periodo;
+        this.recorrencia = recorrencia;
+        this.rota = rota;
+        this.veiculo = veiculo;
+        this.motorista = motorista;
+
+        this.registerEvent(PlanejamentoLoteEditado.of(this));
     }
 
     public List<LocalDateTime> gerarDatas() {
