@@ -89,9 +89,9 @@ public class RabbitMQConfig {
     }
 
     /**
-     * Consumidores leem {@code String} e desserializam por header; retry de 3
-     * tentativas com backoff exponencial (1s, 2s, 4s; teto 10s) e rejeição
-     * para a DLQ ao esgotar (CONTRACT §3).
+     * Consumidores leem {@code String} e desserializam por header; retry com
+     * até 3 reprocessamentos e backoff exponencial (intervalos de 1s, 2s e 4s;
+     * teto 10s) e rejeição para a DLQ ao esgotar (CONTRACT §3).
      */
     @Bean
     public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
@@ -111,7 +111,7 @@ public class RabbitMQConfig {
 
     private Advice retryAdvice() {
         RetryTemplate retryTemplate = RetryTemplate.builder()
-                .maxAttempts(3)
+                .maxAttempts(4)
                 .exponentialBackoff(1000, 2, 10000)
                 .build();
         return RetryInterceptorBuilder.stateless()
