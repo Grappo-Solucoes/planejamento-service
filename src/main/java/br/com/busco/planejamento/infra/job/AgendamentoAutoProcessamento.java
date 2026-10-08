@@ -10,6 +10,7 @@ import br.com.busco.planejamento.domain.AgendamentoRepository;
 import br.com.busco.planejamento.sk.ids.AgendamentoOperacionalId;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -20,6 +21,7 @@ import java.util.List;
 //TODO: Implementar Saga
 @Component
 @Profile("!test")
+@ConditionalOnProperty(name = "planejamento.jobs.auto-processamento.enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
 public class AgendamentoAutoProcessamento {
     private final AgendamentoService service;
