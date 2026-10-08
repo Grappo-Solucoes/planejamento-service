@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "agendamento.criado",
+  "allOf": [{ "$ref": "envelope.schema.json" }],
+  "properties": {
+    "eventType": { "const": "agendamento.criado" },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agendamentoId", "loteId", "data", "rotaId", "veiculoId", "motoristaId"],
+      "properties": {
+        "agendamentoId": { "$ref": "event-defs.schema.json#/$defs/uuid" },
+        "loteId": { "$ref": "event-defs.schema.json#/$defs/uuid" },
+        "data": { "$ref": "event-defs.schema.json#/$defs/localDateTime" },
+        "rotaId": { "$ref": "event-defs.schema.json#/$defs/uuid" },
+        "veiculoId": { "$ref": "event-defs.schema.json#/$defs/uuid" },
+        "motoristaId": { "$ref": "event-defs.schema.json#/$defs/uuid" }
+      }
+    }
+  }
+}

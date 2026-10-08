@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "planejamento.lote.editar.solicitado",
+  "allOf": [{ "$ref": "envelope.schema.json" }],
+  "properties": {
+    "eventType": { "const": "planejamento.lote.editar.solicitado" },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["loteId", "rotaId", "veiculoId", "motoristaId", "dataInicio", "dataFim", "diasDaSemana"],
+      "properties": {
+        "loteId": { "$ref": "event-defs.schema.json#/$defs/uuid" },
+        "rotaId": { "$ref": "event-defs.schema.json#/$defs/uuid" },
+        "veiculoId": { "$ref": "event-defs.schema.json#/$defs/uuid" },
+        "motoristaId": { "$ref": "event-defs.schema.json#/$defs/uuid" },
+        "dataInicio": { "$ref": "event-defs.schema.json#/$defs/localDateTime" },
+        "dataFim": { "$ref": "event-defs.schema.json#/$defs/localDateTime" },
+        "diasDaSemana": { "$ref": "event-defs.schema.json#/$defs/diasDaSemana" }
+      }
+    }
+  }
+}

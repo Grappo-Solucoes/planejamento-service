@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "planejamento.lote.cancelar.solicitado",
+  "allOf": [{ "$ref": "envelope.schema.json" }],
+  "properties": {
+    "eventType": { "const": "planejamento.lote.cancelar.solicitado" },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["loteId"],
+      "properties": {
+        "loteId": { "$ref": "event-defs.schema.json#/$defs/uuid" }
+      }
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "planejamento.lote.falha",
+  "allOf": [{ "$ref": "envelope.schema.json" }],
+  "properties": {
+    "eventType": { "const": "planejamento.lote.falha" },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["loteId", "comando", "motivo"],
+      "properties": {
+        "loteId": { "$ref": "event-defs.schema.json#/$defs/uuid" },
+        "comando": { "$ref": "event-defs.schema.json#/$defs/comandoEventType" },
+        "motivo": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

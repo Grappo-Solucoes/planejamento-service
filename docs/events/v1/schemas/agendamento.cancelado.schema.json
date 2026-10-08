@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "agendamento.cancelado",
+  "allOf": [{ "$ref": "envelope.schema.json" }],
+  "properties": {
+    "eventType": { "const": "agendamento.cancelado" },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agendamentoId", "loteId", "data", "motivo"],
+      "properties": {
+        "agendamentoId": { "$ref": "event-defs.schema.json#/$defs/uuid" },
+        "loteId": { "$ref": "event-defs.schema.json#/$defs/uuid" },
+        "data": { "$ref": "event-defs.schema.json#/$defs/localDateTime" },
+        "motivo": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

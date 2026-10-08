@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "planejamento.lote.cancelado",
+  "allOf": [{ "$ref": "envelope.schema.json" }],
+  "properties": {
+    "eventType": { "const": "planejamento.lote.cancelado" },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["loteId", "quantidadeAgendamentosCancelados"],
+      "properties": {
+        "loteId": { "$ref": "event-defs.schema.json#/$defs/uuid" },
+        "quantidadeAgendamentosCancelados": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

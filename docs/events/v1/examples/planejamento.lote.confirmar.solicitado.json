@@ -1,0 +1,11 @@
+{
+  "eventId": "4d5e6f70-8192-4a3b-c4d5-e6f708192031",
+  "eventType": "planejamento.lote.confirmar.solicitado",
+  "version": "1.0",
+  "occurredOn": "2026-10-08T19:10:00Z",
+  "correlationId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "tenantId": "00000000-0000-0000-0000-000000000001",
+  "payload": {
+    "loteId": "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+  }
+}

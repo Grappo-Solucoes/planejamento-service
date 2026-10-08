@@ -1,0 +1,14 @@
+{
+  "eventId": "c5d6e7f8-091a-42b3-c4d5-364758697081",
+  "eventType": "agendamento.cancelado",
+  "version": "1.0",
+  "occurredOn": "2026-10-08T19:15:02Z",
+  "correlationId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "tenantId": "00000000-0000-0000-0000-000000000001",
+  "payload": {
+    "agendamentoId": "c1d2e3f4-a5b6-4c7d-8e9f-0a1b2c3d4e5f",
+    "loteId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "data": "2026-10-12T08:00:00",
+    "motivo": "Cancelado por planejamento"
+  }
+}

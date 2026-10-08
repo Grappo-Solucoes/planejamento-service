@@ -1,0 +1,13 @@
+{
+  "eventId": "a3b4c5d6-e7f8-4091-a203-142536475869",
+  "eventType": "planejamento.lote.falha",
+  "version": "1.0",
+  "occurredOn": "2026-10-08T19:00:02Z",
+  "correlationId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "tenantId": "00000000-0000-0000-0000-000000000001",
+  "payload": {
+    "loteId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "comando": "planejamento.lote.criar.solicitado",
+    "motivo": "Motorista indisponível no período informado"
+  }
+}

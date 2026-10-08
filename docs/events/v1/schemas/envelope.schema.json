@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Envelope de evento v1",
+  "description": "Estrutura comum a toda mensagem do CONTRACT.md §2.",
+  "type": "object",
+  "required": ["eventId", "eventType", "version", "occurredOn", "correlationId", "tenantId", "payload"],
+  "additionalProperties": false,
+  "properties": {
+    "eventId": { "$ref": "event-defs.schema.json#/$defs/uuid" },
+    "eventType": { "$ref": "event-defs.schema.json#/$defs/eventType" },
+    "version": { "const": "1.0" },
+    "occurredOn": { "$ref": "event-defs.schema.json#/$defs/utcInstant" },
+    "correlationId": { "$ref": "event-defs.schema.json#/$defs/uuid" },
+    "tenantId": { "$ref": "event-defs.schema.json#/$defs/uuid" },
+    "payload": { "type": "object" }
+  }
+}

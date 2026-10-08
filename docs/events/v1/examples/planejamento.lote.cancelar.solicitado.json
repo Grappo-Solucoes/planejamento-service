@@ -1,0 +1,11 @@
+{
+  "eventId": "5e6f7081-92a3-4b4c-d5e6-f70819203142",
+  "eventType": "planejamento.lote.cancelar.solicitado",
+  "version": "1.0",
+  "occurredOn": "2026-10-08T19:15:00Z",
+  "correlationId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+  "tenantId": "00000000-0000-0000-0000-000000000001",
+  "payload": {
+    "loteId": "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+  }
+}

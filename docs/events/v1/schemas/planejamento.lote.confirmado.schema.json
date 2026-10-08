@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "planejamento.lote.confirmado",
+  "allOf": [{ "$ref": "envelope.schema.json" }],
+  "properties": {
+    "eventType": { "const": "planejamento.lote.confirmado" },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["loteId", "quantidadeAgendamentos"],
+      "properties": {
+        "loteId": { "$ref": "event-defs.schema.json#/$defs/uuid" },
+        "quantidadeAgendamentos": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}
