@@ -46,7 +46,10 @@ import java.util.UUID;
  * <p>A aplicação do comando e o marcador de inbox commitam na mesma transação;
  * quando o comando é rejeitado, essa transação reverte por completo e o
  * resultado de falha + marcador commitam juntos em uma segunda transação
- * (evita o rollback-only propagado pela exceção de negócio).</p>
+ * (evita o rollback-only propagado pela exceção de negócio). Falha do
+ * marcador (ex.: colisão de {@code eventId} em entrega duplicada) não é
+ * rejeição de negócio: propaga como infraestrutura para retry/DLQ, sem
+ * {@code lote.falha} espúrio.</p>
  *
  * <p>Falhas de negócio são confirmadas (ack); mensagens malformadas ou fora do
  * catálogo de comandos lançam {@link MensagemNaoProcessavelException} e seguem
@@ -90,20 +93,42 @@ public class ProcessamentoComandoService {
         try {
             // Sucesso: estado + outbox + marcador de inbox na mesma transação.
             transactionTemplate.executeWithoutResult(status -> {
-                despachar(envelope);
+                despacharTraduzindoRejeicao(envelope);
                 registrarProcessado(envelope);
             });
-        } catch (RuntimeException e) {
-            if (!ehFalhaDeNegocio(e)) {
-                throw e;
-            }
-            log.warn("Comando {} rejeitado: {}", envelope.eventType(), e.getMessage());
+        } catch (RejeicaoDeNegocio rejeicao) {
+            RuntimeException causa = (RuntimeException) rejeicao.getCause();
+            log.warn("Comando {} rejeitado: {}", envelope.eventType(), causa.getMessage());
             // Rejeição: a transação acima já reverteu por completo; o resultado
             // de falha e o marcador commitam juntos em transação própria.
             transactionTemplate.executeWithoutResult(status -> {
-                registrarFalha(envelope, e);
+                registrarFalha(envelope, causa);
                 registrarProcessado(envelope);
             });
+        }
+    }
+
+    /**
+     * Traduz apenas exceções de negócio do comando para {@link RejeicaoDeNegocio}.
+     * O registro do marcador fica fora deste método: uma falha dele é
+     * infraestrutura (retry/DLQ), nunca rejeição de negócio.
+     */
+    private void despacharTraduzindoRejeicao(EnvelopeEvento envelope) {
+        try {
+            despachar(envelope);
+        } catch (RuntimeException e) {
+            if (ehFalhaDeNegocio(e)) {
+                throw new RejeicaoDeNegocio(e);
+            }
+            throw e;
+        }
+    }
+
+    /** Rejeição de negócio de um comando, distinta de falha de infraestrutura. */
+    private static final class RejeicaoDeNegocio extends RuntimeException {
+
+        private RejeicaoDeNegocio(RuntimeException causa) {
+            super(causa.getMessage(), causa);
         }
     }
 

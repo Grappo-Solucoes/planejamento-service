@@ -212,6 +212,53 @@ class InboxAtomicidadeIT {
         assertThat(processedEventRepository.findById(eventId)).isPresent();
     }
 
+    @Test
+    @DisplayName("Rejeição de negócio gera exatamente um lote.falha e registra o marcador")
+    void rejeicaoDeNegocioGeraLoteFalhaEMarcador() {
+        String loteId = UUID.randomUUID().toString();
+        String eventId = UUID.randomUUID().toString();
+
+        processamentoComandoService.processar(envelopeConfirmar(eventId, loteId));
+
+        List<OutboxEvent> eventos = outboxEventRepository.findByCorrelationIdOrderByCreatedAtAsc(loteId);
+        assertThat(eventos).extracting(OutboxEvent::getEventType).containsExactly("planejamento.lote.falha");
+        assertThat(eventos.get(0).getPayload())
+                .contains("\"comando\":\"planejamento.lote.confirmar.solicitado\"")
+                .contains("\"motivo\":");
+        assertThat(processedEventRepository.findById(eventId)).isPresent();
+        assertThat(planejamentoLoteRepository.findById(PlanejamentoLoteId.fromString(loteId))).isEmpty();
+    }
+
+    @Test
+    @DisplayName("Reentrega de comando rejeitado não gera um segundo lote.falha")
+    void reentregaDeComandoRejeitadoNaoGeraSegundoLoteFalha() {
+        String loteId = UUID.randomUUID().toString();
+        String eventId = UUID.randomUUID().toString();
+        EnvelopeEvento envelope = envelopeConfirmar(eventId, loteId);
+
+        processamentoComandoService.processar(envelope);
+        processamentoComandoService.processar(envelope);
+
+        assertThat(outboxEventRepository.findByCorrelationIdOrderByCreatedAtAsc(loteId)).hasSize(1);
+        assertThat(processedEventRepository.findById(eventId)).isPresent();
+    }
+
+    @Test
+    @DisplayName("Falha do marcador no caminho de rejeição também reverte o lote.falha")
+    void falhaDoMarcadorNoCaminhoDeRejeicaoReverteLoteFalha() {
+        String loteId = UUID.randomUUID().toString();
+        String eventId = UUID.randomUUID().toString();
+
+        doThrow(new DataIntegrityViolationException("colisão no marcador"))
+                .when(processedEventRepository).save(any(ProcessedEvent.class));
+
+        assertThatThrownBy(() -> processamentoComandoService.processar(envelopeConfirmar(eventId, loteId)))
+                .isInstanceOf(DataIntegrityViolationException.class);
+
+        assertThat(outboxEventRepository.findByCorrelationIdOrderByCreatedAtAsc(loteId)).isEmpty();
+        assertThat(processedEventRepository.findById(eventId)).isEmpty();
+    }
+
     private EnvelopeEvento envelopeCriar(String eventId, String loteId) {
         LocalDateTime inicio = LocalDateTime.now().plusDays(1).withNano(0);
         ObjectNode payload = objectMapper.createObjectNode();
@@ -237,6 +284,13 @@ class InboxAtomicidadeIT {
         payload.put("dataFim", inicio.plusMonths(1).toString());
         payload.putArray("diasDaSemana").add(2);
         return new EnvelopeEvento(eventId, EventosV1.LOTE_EDITAR_SOLICITADO, EventosV1.VERSAO,
+                Instant.now(), loteId, TENANT, payload);
+    }
+
+    private EnvelopeEvento envelopeConfirmar(String eventId, String loteId) {
+        ObjectNode payload = objectMapper.createObjectNode();
+        payload.put("loteId", loteId);
+        return new EnvelopeEvento(eventId, EventosV1.LOTE_CONFIRMAR_SOLICITADO, EventosV1.VERSAO,
                 Instant.now(), loteId, TENANT, payload);
     }
 }
