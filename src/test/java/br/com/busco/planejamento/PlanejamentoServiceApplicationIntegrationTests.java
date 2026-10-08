@@ -5,10 +5,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Bean;
-import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -34,10 +31,13 @@ import static org.assertj.core.api.Assertions.assertThat;
         "spring.rabbitmq.port=5672",
         "spring.rabbitmq.username=guest",
         "spring.rabbitmq.password=guest",
+        "spring.rabbitmq.listener.simple.auto-startup=false",
         "spring.data.redis.host=localhost",
         "spring.data.redis.port=6379",
         "planejamento.tenant-id=00000000-0000-0000-0000-000000000001",
-        "planejamento.outbox.publisher.enabled=false"
+        "planejamento.outbox.publisher.enabled=false",
+        "planejamento.jwt.secret=dGVzdGUtcGxhbmVqYW1lbnRvLXNlcnZpY2Utc2VjcmV0LTMyYg",
+        "spring.security.oauth2.resourceserver.jwt.issuer-uri="
 })
 @ActiveProfiles("integration")
 class PlanejamentoServiceApplicationIntegrationTests {
@@ -51,16 +51,5 @@ class PlanejamentoServiceApplicationIntegrationTests {
         assertThat(context.getBeanNamesForType(AgendamentoAutoProcessamento.class)).isEmpty();
         assertThat(context.getBeanDefinitionNames())
                 .noneMatch(nome -> nome.toLowerCase().contains("partition"));
-    }
-
-    @TestConfiguration
-    static class JwtDecoderStubConfiguration {
-
-        @Bean
-        JwtDecoder jwtDecoder() {
-            return token -> {
-                throw new IllegalStateException("Stub de teste: decodificação não é exercitada neste contexto");
-            };
-        }
     }
 }

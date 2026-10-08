@@ -12,6 +12,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.retry.support.RetryTemplate;
 
+import br.com.busco.planejamento.sk.ddd.TenantAwareMessagePostProcessor;
+
 /**
  * Topologia e transporte RabbitMQ conforme CONTRACT §1 e §3:
  * comando roteia para {@value RabbitTopologia#COMMANDS_QUEUE}; evento de
@@ -91,12 +93,15 @@ public class RabbitMQConfig {
      * para a DLQ ao esgotar (CONTRACT §3).
      */
     @Bean
-    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(ConnectionFactory connectionFactory) {
+    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
+            ConnectionFactory connectionFactory,
+            TenantAwareMessagePostProcessor tenantAwareMessagePostProcessor) {
         SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
         factory.setConnectionFactory(connectionFactory);
         factory.setDefaultRequeueRejected(false);
         factory.setPrefetchCount(10);
         factory.setAdviceChain(retryAdvice());
+        factory.setAfterReceivePostProcessors(tenantAwareMessagePostProcessor);
         return factory;
     }
 

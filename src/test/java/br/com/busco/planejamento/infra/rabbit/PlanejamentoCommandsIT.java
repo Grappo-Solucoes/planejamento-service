@@ -242,6 +242,19 @@ class PlanejamentoCommandsIT {
         assertThat(planejamentoService.buscarPorId(loteId).getId()).isEqualTo(loteId);
     }
 
+    @Test
+    @DisplayName("Tenant do header da mensagem é aplicado no processamento")
+    void tenantDoHeaderEhAplicado() {
+        PlanejamentoLoteId loteId = PlanejamentoLoteId.randomId();
+        String tenant = UUID.randomUUID().toString();
+
+        publicar(EventosV1.LOTE_CRIAR_SOLICITADO, loteId, payloadLote(loteId, rotaId, Set.of(1, 3, 5)),
+                UUID.randomUUID().toString(), tenant);
+
+        List<OutboxEvent> eventos = aguardarResultado(loteId, EventosV1.LOTE_FALHA, "planejamento.lote.criado", "planejamento.lote.criado");
+        assertThat(eventos).extracting(OutboxEvent::getTenantId).containsOnly(tenant);
+    }
+
     // --- helpers ---
 
     private PlanejamentoLoteId criarLote() {
@@ -264,17 +277,21 @@ class PlanejamentoCommandsIT {
     }
 
     private void publicar(String eventType, PlanejamentoLoteId loteId, Map<String, Object> payload) {
-        publicar(eventType, loteId, payload, UUID.randomUUID().toString());
+        publicar(eventType, loteId, payload, UUID.randomUUID().toString(), TENANT);
     }
 
     private void publicar(String eventType, PlanejamentoLoteId loteId, Map<String, Object> payload, String eventId) {
+        publicar(eventType, loteId, payload, eventId, TENANT);
+    }
+
+    private void publicar(String eventType, PlanejamentoLoteId loteId, Map<String, Object> payload, String eventId, String tenant) {
         ObjectNode envelope = eventoJson.mapper().createObjectNode();
         envelope.put("eventId", eventId);
         envelope.put("eventType", eventType);
         envelope.put("version", EventosV1.VERSAO);
         envelope.put("occurredOn", FORMATO_INSTANTE_UTC.format(Instant.now()));
         envelope.put("correlationId", loteId.toUUID());
-        envelope.put("tenantId", TENANT);
+        envelope.put("tenantId", tenant);
         envelope.set("payload", eventoJson.mapper().valueToTree(payload));
 
         MessageProperties props = new MessageProperties();
@@ -282,7 +299,7 @@ class PlanejamentoCommandsIT {
         props.setContentEncoding(StandardCharsets.UTF_8.name());
         props.setHeader("event-type", eventType);
         props.setHeader("event-version", EventosV1.VERSAO);
-        props.setHeader("tenant-id", TENANT);
+        props.setHeader("tenant-id", tenant);
         props.setCorrelationId(loteId.toUUID());
 
         rabbitTemplate.send(RabbitTopologia.COMMANDS_EXCHANGE, eventType,

@@ -1,11 +1,20 @@
 package br.com.busco.planejamento.infra.config;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtDecoders;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
+
+import javax.crypto.SecretKey;
+import javax.crypto.spec.SecretKeySpec;
+import java.util.Base64;
 
 @Configuration
 public class SecurityConfig {
@@ -45,6 +54,29 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 );
         return http.build();
+    }
+
+    /**
+     * Aceita os JWT HS256 emitidos pelo busco-api: segredo compartilhado
+     * ({@code JWT_SECRET}) decodificado em BASE64URL, como no JwtTokenUtil do
+     * busco-api. O issuer OAuth2 continua disponível como opção por
+     * configuração (D6).
+     */
+    @Bean
+    @Profile("!test")
+    public JwtDecoder jwtDecoder(
+            @Value("${planejamento.jwt.secret:}") String segredoBase64Url,
+            @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri:}") String issuerUri) {
+        if (segredoBase64Url != null && !segredoBase64Url.isBlank()) {
+            byte[] segredo = Base64.getUrlDecoder().decode(segredoBase64Url.trim());
+            SecretKey chave = new SecretKeySpec(segredo, "HmacSHA256");
+            return NimbusJwtDecoder.withSecretKey(chave).macAlgorithm(MacAlgorithm.HS256).build();
+        }
+        if (issuerUri != null && !issuerUri.isBlank()) {
+            return JwtDecoders.fromIssuerLocation(issuerUri);
+        }
+        throw new IllegalStateException("Configure planejamento.jwt.secret (HS256/JWT_SECRET) "
+                + "ou spring.security.oauth2.resourceserver.jwt.issuer-uri");
     }
 
 //    @Bean

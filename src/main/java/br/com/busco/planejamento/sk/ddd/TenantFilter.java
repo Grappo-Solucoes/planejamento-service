@@ -16,6 +16,12 @@ import java.io.IOException;
 @Component
 public class TenantFilter extends OncePerRequestFilter {
 
+    private final TenantProvider tenantProvider;
+
+    public TenantFilter(TenantProvider tenantProvider) {
+        this.tenantProvider = tenantProvider;
+    }
+
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
@@ -25,13 +31,15 @@ public class TenantFilter extends OncePerRequestFilter {
 
         var auth = SecurityContextHolder.getContext().getAuthentication();
 
+        String tenant = null;
         if (auth instanceof JwtAuthenticationToken jwtAuth) {
-            var tenant = jwtAuth.getToken().getClaimAsString("tenant_id");
-
-            if (tenant != null) {
-                TenantContext.set(TenantId.fromString(tenant));
-            }
+            tenant = jwtAuth.getToken().getClaimAsString("tenant_id");
         }
+
+        // Claim quando presente; tenant fixo da instalação como fallback (D6).
+        TenantContext.set(tenant != null && !tenant.isBlank()
+                ? TenantId.fromString(tenant)
+                : tenantProvider.tenantPadrao());
 
         try {
             filterChain.doFilter(request, response);
