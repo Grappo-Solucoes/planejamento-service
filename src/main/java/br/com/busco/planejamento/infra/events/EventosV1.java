@@ -32,8 +32,9 @@ public final class EventosV1 {
     );
 
     /**
-     * Todos os tipos do catálogo v1 (comandos e eventos de resultado). Um
-     * {@code eventType} fora deste conjunto é rejeitado para a DLQ.
+     * Todos os tipos do catálogo v1 (comandos e eventos de resultado), para
+     * referência do contrato (schemas/testes). A validação do consumidor de
+     * comandos usa {@link #COMANDOS}.
      */
     public static final Set<String> CATALOGO = Set.of(
             LOTE_CRIAR_SOLICITADO,

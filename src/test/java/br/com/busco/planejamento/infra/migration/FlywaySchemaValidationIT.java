@@ -21,9 +21,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * alinhadas a V1 e ao mapeamento {@code String} das entidades.
  */
 @SpringBootTest(properties = {
-        "spring.datasource.url=jdbc:postgresql://localhost:5432/planejamento",
-        "spring.datasource.username=planejamento",
-        "spring.datasource.password=planejamento",
+        // url/username/password vêm do container via @ServiceConnection
         "spring.datasource.hikari.data-source-properties.sslmode=disable",
         "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect",
         "spring.data.redis.host=localhost",
@@ -35,6 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         "spring.rabbitmq.listener.simple.auto-startup=false",
         "planejamento.tenant-id=00000000-0000-0000-0000-000000000001",
         "planejamento.outbox.publisher.enabled=false",
+        "planejamento.jobs.auto-processamento.enabled=false",
         "planejamento.jwt.secret=dGVzdGUtcGxhbmVqYW1lbnRvLXNlcnZpY2Utc2VjcmV0LTMyYg"
 })
 @Testcontainers
