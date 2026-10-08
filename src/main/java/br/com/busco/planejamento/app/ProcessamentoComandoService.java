@@ -19,11 +19,11 @@ import br.com.busco.planejamento.sk.ids.VeiculoId;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.ConstraintViolationException;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.DayOfWeek;
 import java.time.Instant;
@@ -43,13 +43,18 @@ import java.util.UUID;
  * publica {@code planejamento.lote.falha} com o motivo. Todo comando do
  * catálogo produz exatamente um resultado.
  *
+ * <p>A aplicação do comando e o marcador de inbox commitam na mesma transação;
+ * quando o comando é rejeitado, essa transação reverte por completo e o
+ * resultado de falha + marcador commitam juntos em uma segunda transação
+ * (evita o rollback-only propagado pela exceção de negócio).</p>
+ *
  * <p>Falhas de negócio são confirmadas (ack); mensagens malformadas ou fora do
- * catálogo lançam {@link MensagemNaoProcessavelException} e seguem para a DLQ
- * após o retry; falhas de infraestrutura são relançadas para reprocessamento.</p>
+ * catálogo de comandos lançam {@link MensagemNaoProcessavelException} e seguem
+ * para a DLQ após o retry; falhas de infraestrutura são relançadas para
+ * reprocessamento.</p>
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class ProcessamentoComandoService {
 
     private static final int TAMANHO_MAX_MOTIVO = 500;
@@ -58,8 +63,21 @@ public class ProcessamentoComandoService {
     private final OutboxRecorder outboxRecorder;
     private final TenantProvider tenantProvider;
     private final ProcessedEventRepository processedEventRepository;
+    private final TransactionTemplate transactionTemplate;
 
-    @Transactional
+    public ProcessamentoComandoService(
+            PlanejamentoService planejamentoService,
+            OutboxRecorder outboxRecorder,
+            TenantProvider tenantProvider,
+            ProcessedEventRepository processedEventRepository,
+            PlatformTransactionManager transactionManager) {
+        this.planejamentoService = planejamentoService;
+        this.outboxRecorder = outboxRecorder;
+        this.tenantProvider = tenantProvider;
+        this.processedEventRepository = processedEventRepository;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
+    }
+
     public void processar(EnvelopeEvento envelope) {
         validar(envelope);
 
@@ -70,15 +88,26 @@ public class ProcessamentoComandoService {
         }
 
         try {
-            despachar(envelope);
+            // Sucesso: estado + outbox + marcador de inbox na mesma transação.
+            transactionTemplate.executeWithoutResult(status -> {
+                despachar(envelope);
+                registrarProcessado(envelope);
+            });
         } catch (RuntimeException e) {
             if (!ehFalhaDeNegocio(e)) {
                 throw e;
             }
             log.warn("Comando {} rejeitado: {}", envelope.eventType(), e.getMessage());
-            registrarFalha(envelope, e);
+            // Rejeição: a transação acima já reverteu por completo; o resultado
+            // de falha e o marcador commitam juntos em transação própria.
+            transactionTemplate.executeWithoutResult(status -> {
+                registrarFalha(envelope, e);
+                registrarProcessado(envelope);
+            });
         }
+    }
 
+    private void registrarProcessado(EnvelopeEvento envelope) {
         processedEventRepository.save(ProcessedEvent.builder()
                 .eventId(envelope.eventId())
                 .eventType(envelope.eventType())
@@ -99,8 +128,8 @@ public class ProcessamentoComandoService {
         if (envelope.payload() == null || !envelope.payload().isObject()) {
             throw new MensagemNaoProcessavelException("Envelope sem payload de objeto");
         }
-        if (!EventosV1.CATALOGO.contains(envelope.eventType())) {
-            throw new MensagemNaoProcessavelException("eventType fora do catálogo v1: " + envelope.eventType());
+        if (!EventosV1.COMANDOS.contains(envelope.eventType())) {
+            throw new MensagemNaoProcessavelException("eventType fora do catálogo de comandos v1: " + envelope.eventType());
         }
     }
 

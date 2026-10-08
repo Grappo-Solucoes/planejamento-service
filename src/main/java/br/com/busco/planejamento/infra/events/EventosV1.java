@@ -20,6 +20,18 @@ public final class EventosV1 {
     public static final String LOTE_FALHA = "planejamento.lote.falha";
 
     /**
+     * Comandos do catálogo v1 consumidos pelo serviço. A validação do
+     * consumidor usa somente este conjunto: um eventType de resultado
+     * publicado por engano na fila de comandos é rejeitado para a DLQ.
+     */
+    public static final Set<String> COMANDOS = Set.of(
+            LOTE_CRIAR_SOLICITADO,
+            LOTE_EDITAR_SOLICITADO,
+            LOTE_CONFIRMAR_SOLICITADO,
+            LOTE_CANCELAR_SOLICITADO
+    );
+
+    /**
      * Todos os tipos do catálogo v1 (comandos e eventos de resultado). Um
      * {@code eventType} fora deste conjunto é rejeitado para a DLQ.
      */
