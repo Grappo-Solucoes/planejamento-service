@@ -151,6 +151,37 @@ class PlanejamentoServiceIT {
         }
 
         @Test
+        @DisplayName("Confirmação gera exatamente um agendamento por data elegível")
+        void deveGerarExatamenteUmAgendamentoPorData() {
+            LocalDate primeiraSegunda = LocalDate.now()
+                    .plusDays(1)
+                    .with(java.time.temporal.TemporalAdjusters.nextOrSame(DayOfWeek.MONDAY));
+            var inicio = LocalDateTime.of(primeiraSegunda, LocalTime.of(10, 0));
+            var fim = inicio.plusDays(6);
+
+            var criarCmd = CriarPlanejamentoLote.builder()
+                    .dataInicio(inicio)
+                    .dataFim(fim)
+                    .diasDaSemana(Set.of(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY))
+                    .rota(rotaId)
+                    .veiculo(veiculoId)
+                    .motorista(motoristaId)
+                    .build();
+            var id = planejamentoService.handle(criarCmd);
+
+            planejamentoService.handle(ConfirmarPlanejamentoLote.builder().id(id).build());
+
+            var ids = agendamentoRepository.buscarIdFuturosPorPlanejamento(id, LocalDateTime.of(2023, 12, 31, 23, 59));
+            var datas = ids.stream()
+                    .map(agendamentoId -> agendamentoRepository.findById(agendamentoId).orElseThrow().getData())
+                    .toList();
+            var datasEsperadas = planejamentoService.buscarPorId(id).gerarDatas();
+
+            assertThat(datas).doesNotHaveDuplicates();
+            assertThat(datas).containsExactlyInAnyOrderElementsOf(datasEsperadas);
+        }
+
+        @Test
         @DisplayName("Não deve confirmar planejamento suspenso")
         void naoDeveConfirmarPlanejamentoSuspenso() {
             var criarCmd = CriarPlanejamentoLote.builder()
