@@ -57,7 +57,7 @@ import static org.assertj.core.api.Assertions.fail;
  * comando na exchange de comandos, aguarda o processamento pelo listener real e
  * confere o evento de resultado na fila do busco-api, passando pela outbox.
  */
-@SpringBootTest
+@SpringBootTest(properties = "spring.rabbitmq.listener.simple.auto-startup=true")
 @ActiveProfiles("test")
 @Testcontainers
 @DisplayName("Comandos v1 - Testes de Integração")
