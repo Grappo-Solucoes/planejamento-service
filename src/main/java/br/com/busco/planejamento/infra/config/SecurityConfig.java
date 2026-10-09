@@ -33,6 +33,10 @@ public class SecurityConfig {
                                 "/webjars/**",              // Adicionado
                                 "/api-docs/**"              // Adicionado (caso use)
                         ).permitAll()
+                        // Probes de Kubernetes: o kubelet consulta liveness/readiness
+                        // sem token. Só o grupo health é público; os demais endpoints do
+                        // Actuator (ex.: /actuator/prometheus) seguem autenticados.
+                        .requestMatchers("/actuator/health/**").permitAll()
                         // Qualquer outra requisição precisa de autenticação
                         .anyRequest().authenticated()
                 ).oauth2ResourceServer(oauth2 -> oauth2

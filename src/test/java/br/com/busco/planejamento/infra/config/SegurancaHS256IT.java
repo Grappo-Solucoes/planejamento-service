@@ -22,9 +22,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Aceita os JWT HS256 emitidos pelo busco-api no perfil de integração:
- * token válido autoriza (200), assinatura inválida e ausência de token
- * retornam 401 (D6/CONTRACT de autenticação da spec service-runtime).
+ * Aceita os JWT HS256 emitidos pelo busco-api no perfil de integração e garante
+ * que as probes de Kubernetes (liveness/readiness) são públicas, enquanto o
+ * restante do Actuator e os endpoints de negócio seguem autenticados
+ * (service-runtime D6/CONTRACT de autenticação).
  */
 @SpringBootTest(properties = {
         "spring.datasource.url=jdbc:h2:mem:segurancadb;MODE=PostgreSQL;INIT=CREATE SCHEMA IF NOT EXISTS agendamento;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE",
@@ -55,14 +56,43 @@ class SegurancaHS256IT {
 
     private static final String SEGREDO_BASE64URL = "dGVzdGUtcGxhbmVqYW1lbnRvLXNlcnZpY2Utc2VjcmV0LTMyYg";
     private static final String TENANT = "00000000-0000-0000-0000-000000000001";
+    private static final String ID_INEXISTENTE = "00000000-0000-0000-0000-0000000000ff";
 
     @Autowired
     private MockMvc mockMvc;
 
     @Test
+    @DisplayName("Liveness responde 200 sem token (probe do kubelet)")
+    void livenessSemTokenRetorna200() throws Exception {
+        mockMvc.perform(get("/actuator/health/liveness"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("Readiness responde 200 sem token (probe do kubelet)")
+    void readinessSemTokenRetorna200() throws Exception {
+        mockMvc.perform(get("/actuator/health/readiness"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("Endpoint de negócio sem token retorna 401")
+    void endpointDeNegocioSemTokenRetorna401() throws Exception {
+        mockMvc.perform(get("/api/planejamentos/{id}", ID_INEXISTENTE))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("Actuator fora de health (ex.: info) sem token retorna 401")
+    void actuatorForaDeHealthSemTokenRetorna401() throws Exception {
+        mockMvc.perform(get("/actuator/info"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     @DisplayName("Token HS256 válido autoriza (200)")
     void tokenValidoAutoriza() throws Exception {
-        mockMvc.perform(get("/actuator/health/liveness")
+        mockMvc.perform(get("/actuator/info")
                         .header("Authorization", "Bearer " + token(SEGREDO_BASE64URL)))
                 .andExpect(status().isOk());
     }
@@ -73,15 +103,8 @@ class SegurancaHS256IT {
         String outroSegredo = Base64.getUrlEncoder().withoutPadding()
                 .encodeToString(UUID.randomUUID().toString().getBytes());
 
-        mockMvc.perform(get("/actuator/health/liveness")
+        mockMvc.perform(get("/actuator/info")
                         .header("Authorization", "Bearer " + token(outroSegredo)))
-                .andExpect(status().isUnauthorized());
-    }
-
-    @Test
-    @DisplayName("Requisição sem token retorna 401")
-    void semTokenRetorna401() throws Exception {
-        mockMvc.perform(get("/actuator/health/liveness"))
                 .andExpect(status().isUnauthorized());
     }
 
