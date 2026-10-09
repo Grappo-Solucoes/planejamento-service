@@ -33,7 +33,8 @@ spec:
                 name: planejamento-service-secrets
           # Probes do K8s (tarefa 7.2): grupos dedicados do Actuator, habilitados em
           # application.properties (management.endpoint.health.probes.enabled=true).
-          # Atenção: /actuator/** exige JWT neste serviço (service-runtime D6); ver README.
+          # /actuator/health/** é público (SecurityConfig) para o kubelet; o restante
+          # do Actuator segue autenticado. Ver README.
           startupProbe:
             httpGet:
               path: /actuator/health/liveness

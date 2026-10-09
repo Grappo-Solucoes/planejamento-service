@@ -19,8 +19,13 @@ bash ./mvnw spring-boot:run
 ```
 
 Probes: `GET http://localhost:8080/actuator/health/liveness` e
-`GET http://localhost:8080/actuator/health/readiness` (exigem token JWT válido,
-pois `/actuator/**` passa pelo resource server).
+`GET http://localhost:8080/actuator/health/readiness` (públicas — respondem `200` sem token;
+o `SecurityConfig` libera `/actuator/health/**`). O restante do Actuator e os endpoints de
+negócio continuam exigindo JWT.
+
+Métricas: `/actuator/prometheus` permanece **autenticado** (decisão registrada em `k8s/README.md`);
+o scrape exige token (`Authorization: Bearer …`) ou network policy, e o endpoint só responde com
+`micrometer-registry-prometheus` no classpath.
 
 ## Variáveis
 

@@ -64,13 +64,18 @@ Summary: 4 resources found in 4 files - Valid: 4, Invalid: 0, Errors: 0, Skipped
 ## Notas de operação
 
 - **Probes e autenticação**: `management.endpoint.health.probes.enabled=true` e a exposição
-  (`management.endpoints.web.exposure.include=health,info,prometheus`) já estão em
-  `application.properties`. Porém, neste serviço `/actuator/**` **exige JWT** (service-runtime D6;
-  ver `SecurityConfig` e `SegurancaHS256IT`), então probes HTTP sem token retornam `401`. Antes de
-  usar estes manifests em produção, a operação precisa de uma das alternativas: liberar
-  `/actuator/health/**` no `SecurityConfig`, expor o Actuator numa porta de management sem
-  autenticação, ou enviar `httpHeaders: {Authorization: "Bearer <token>"}` (rotação de token é
-  impraticável para probes). Os paths apontam para os endpoints reais e a exposição está habilitada.
+  (`management.endpoints.web.exposure.include=health,info,prometheus`) estão em
+  `application.properties`. O `SecurityConfig` libera `/actuator/health/**` (`permitAll`), então
+  `/actuator/health/liveness` e `/actuator/health/readiness` respondem `200` **sem token** — é o que
+  o kubelet usa nestes manifests (sem `httpHeaders`). O restante do Actuator e os endpoints de
+  negócio continuam exigindo JWT (service-runtime D6; ver `SegurancaHS256IT`).
+- **Métricas (`/actuator/prometheus`)**: mantido **autenticado** (decisão registrada). O scrape
+  exige `Authorization: Bearer <token>` (ex.: `bearer_token_file` no Prometheus ou
+  `ServiceMonitor`/`ScrapeConfig`) **ou** uma network policy restringindo a porta 8080 ao namespace
+  de monitoração. O endpoint só responde se a dependência `micrometer-registry-prometheus` for
+  adicionada ao `pom.xml` (a exposição está habilitada, mas sem o registry o path retorna 404 após
+  autenticar). Optamos por não expor métricas sem autenticação; se a operação preferir liberá-las
+  dentro da rede do cluster, basta incluir `/actuator/prometheus` no `permitAll` do `SecurityConfig`.
 - **TLS do Postgres**: `application.properties` fixa
   `spring.datasource.hikari.data-source-properties.sslmode=require`. O Postgres do cluster precisa
   apresentar TLS; caso contrário, sobrescreva com
