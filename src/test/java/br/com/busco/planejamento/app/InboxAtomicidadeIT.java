@@ -105,6 +105,38 @@ class InboxAtomicidadeIT {
     }
 
     @Test
+    @DisplayName("Falha transitória do marcador no sucesso propaga como infra e é reentregável")
+    void falhaTransitoriaDoMarcadorNoSucessoPropagaComoInfra() {
+        String loteId = UUID.randomUUID().toString();
+        String eventId = UUID.randomUUID().toString();
+        EnvelopeEvento envelope = envelopeCriar(eventId, loteId);
+
+        // A primeira gravação do marcador falha (transitória); após reset a
+        // reentrega usa o comportamento real. Falha do marcador não é rejeição
+        // de negócio.
+        doThrow(new DataIntegrityViolationException("marcador indisponível (transitório)"))
+                .when(processedEventRepository).save(any(ProcessedEvent.class));
+
+        assertThatThrownBy(() -> processamentoComandoService.processar(envelope))
+                .isInstanceOf(DataIntegrityViolationException.class);
+
+        // Nada aplicado e, principalmente, sem lote.falha espúrio.
+        assertThat(planejamentoLoteRepository.findById(PlanejamentoLoteId.fromString(loteId))).isEmpty();
+        assertThat(outboxEventRepository.findByCorrelationIdOrderByCreatedAtAsc(loteId)).isEmpty();
+        assertThat(processedEventRepository.existsById(eventId)).isFalse();
+
+        // Reentrega: o marcador volta a funcionar → sucesso, sem lote.falha.
+        reset(processedEventRepository);
+        processamentoComandoService.processar(envelope);
+
+        assertThat(planejamentoLoteRepository.findById(PlanejamentoLoteId.fromString(loteId))).isPresent();
+        assertThat(outboxEventRepository.findByCorrelationIdOrderByCreatedAtAsc(loteId))
+                .extracting(OutboxEvent::getEventType)
+                .containsExactly("planejamento.lote.criado");
+        assertThat(processedEventRepository.existsById(eventId)).isTrue();
+    }
+
+    @Test
     @DisplayName("Reentrega após sucesso é confirmada sem reaplicar o efeito")
     void reentregaAposSucessoNaoReaplica() {
         String loteId = UUID.randomUUID().toString();
@@ -162,7 +194,7 @@ class InboxAtomicidadeIT {
         // registra o marcador depois: o INSERT colide e nada é reaplicado.
         doReturn(false).when(processedEventRepository).existsById(eventIdEditar);
         assertThatThrownBy(() -> processamentoComandoService.processar(editar))
-                .isInstanceOf(RuntimeException.class);
+                .isInstanceOf(DataIntegrityViolationException.class);
         reset(processedEventRepository);
 
         assertThat(outboxEventRepository.findByCorrelationIdOrderByCreatedAtAsc(loteId))
@@ -182,9 +214,9 @@ class InboxAtomicidadeIT {
         CountDownLatch largada = new CountDownLatch(1);
         ExecutorService executor = Executors.newFixedThreadPool(entregas);
         try {
-            List<Future<Boolean>> resultados = new ArrayList<>();
+            List<Future<Boolean>> futuros = new ArrayList<>();
             for (int i = 0; i < entregas; i++) {
-                resultados.add(executor.submit(() -> {
+                futuros.add(executor.submit(() -> {
                     largada.await();
                     try {
                         processamentoComandoService.processar(envelope);
@@ -195,9 +227,13 @@ class InboxAtomicidadeIT {
                 }));
             }
             largada.countDown();
-            for (Future<Boolean> resultado : resultados) {
-                resultado.get(30, TimeUnit.SECONDS);
+            List<Boolean> resultados = new ArrayList<>();
+            for (Future<Boolean> futuro : futuros) {
+                resultados.add(futuro.get(30, TimeUnit.SECONDS));
             }
+            // Só uma entrega pode aplicar o efeito; as perdedoras colidem no
+            // marcador e retornam false (no máximo um sucesso).
+            assertThat(resultados).filteredOn(Boolean::booleanValue).hasSizeLessThanOrEqualTo(1);
         } finally {
             executor.shutdownNow();
         }
