@@ -15,7 +15,6 @@ import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.NonNull;
 import lombok.extern.java.Log;
-import org.springframework.data.jpa.repository.Lock;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,7 +22,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-import static jakarta.persistence.LockModeType.PESSIMISTIC_READ;
 import static java.lang.String.format;
 import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
@@ -45,7 +43,6 @@ public class PlanejamentoService {
     private final PlanejamentoRepository repository;
 
     @NonNull
-    @Lock(PESSIMISTIC_READ)
     public UUID handle(@NonNull @Valid PlanejarViagem cmd) {
         Planejamento planejamento = Planejamento.builder()
                 .dataInicio(cmd.getDataInicio())
@@ -67,7 +64,6 @@ public class PlanejamentoService {
     }
 
     @NonNull
-    @Lock(PESSIMISTIC_READ)
     public UUID handle(@NonNull @Valid EditarPlanejamento cmd) {
         Planejamento planejamento = buscarPorId(PlanejamentoId.fromString(cmd.getId().toString()));
 
@@ -90,7 +86,6 @@ public class PlanejamentoService {
     }
 
     @NonNull
-    @Lock(PESSIMISTIC_READ)
     public UUID handle(@NonNull @Valid ValidarPlanejamento cmd) {
         Planejamento planejamento = buscarPorId(PlanejamentoId.fromString(cmd.getId().toString()));
         if (planejamento.getStatus() != Status.EM_ANALISE) {
@@ -103,7 +98,6 @@ public class PlanejamentoService {
     }
 
     @NonNull
-    @Lock(PESSIMISTIC_READ)
     public UUID handle(@NonNull @Valid CancelarPlanejamento cmd) {
         Planejamento planejamento = buscarPorId(PlanejamentoId.fromString(cmd.getId().toString()));
         if (planejamento.getStatus() != Status.EM_ANALISE
@@ -117,7 +111,6 @@ public class PlanejamentoService {
     }
 
     @NonNull
-    @Lock(PESSIMISTIC_READ)
     public UUID handle(@NonNull @Valid DuplicarPlanejamento cmd) {
         Planejamento origem = buscarPorId(PlanejamentoId.fromString(cmd.getId().toString()));
 

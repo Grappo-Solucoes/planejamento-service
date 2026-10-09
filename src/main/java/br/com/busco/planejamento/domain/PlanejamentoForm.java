@@ -96,4 +96,13 @@ public class PlanejamentoForm {
     public void aplicar() {
         action.accept(this);
     }
+
+    /** Form vazio (PUT sem campos): nada a aplicar, chamador pode pular eventos. */
+    public boolean isVazio() {
+        return dataInicio == null && dataFim == null && horaViagem == null
+                && diasDaSemana == null && calendarioIds == null && motoristaId == null
+                && rotaId == null && veiculoId == null && monitorId == null
+                && passageiros == null && grupoChecklistInicialId == null
+                && grupoChecklistFinalId == null;
+    }
 }

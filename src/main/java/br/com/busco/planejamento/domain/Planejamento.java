@@ -143,7 +143,9 @@ public class Planejamento extends AbstractAggregateRoot<PlanejamentoId> {
 
     public PlanejamentoForm update() {
         return new PlanejamentoForm(form -> {
-            if (form.getDataInicio() != null) {
+            if (form.isVazio()) {
+                return;
+            }            if (form.getDataInicio() != null) {
                 this.dataInicio = form.getDataInicio();
             }
             if (form.getDataFim() != null) {

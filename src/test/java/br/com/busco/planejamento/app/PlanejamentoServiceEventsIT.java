@@ -145,6 +145,17 @@ class PlanejamentoServiceEventsIT {
     }
 
     @Test
+    @DisplayName("Editar sem campos não publica evento")
+    void editarVazioNaoPublicaEvento() {
+        UUID id = service.handle(baseCmd.build());
+        events.limpar();
+
+        service.handle(EditarPlanejamento.builder().id(id).build());
+
+        assertThat(events.porTipo(PlanejamentoEditado.class)).isEmpty();
+    }
+
+    @Test
     @DisplayName("Editar publica PlanejamentoEditado sem escrever em tabela de viagem")
     void editarPublicaEvento() {
         UUID id = service.handle(baseCmd.build());

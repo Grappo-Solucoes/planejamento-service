@@ -101,6 +101,55 @@ class PlanejamentoEdicaoDuplicacaoIT {
     }
 
     @Test
+    @DisplayName("Edição full-payload (formato monólito) aplica todos os campos")
+    void edicaoFullPayloadAplicaTudo() {
+        UUID id = criar(true);
+        LocalDate novaInicio = LocalDate.now().plusDays(5);
+        LocalDate novaFim = LocalDate.now().plusMonths(2);
+        UUID novaRota = UUID.randomUUID();
+        UUID novoMotorista = UUID.randomUUID();
+        UUID novoVeiculo = UUID.randomUUID();
+        UUID novoMonitor = UUID.randomUUID();
+        UUID novoAluno = UUID.randomUUID();
+        UUID novoCalendario = UUID.randomUUID();
+        UUID novoCheckIni = UUID.randomUUID();
+        UUID novoCheckFim = UUID.randomUUID();
+
+        service.handle(EditarPlanejamento.builder()
+                .id(id)
+                .dataInicio(novaInicio)
+                .dataFim(novaFim)
+                .horaViagem(LocalTime.of(10, 30))
+                .diasSemana(List.of(DayOfWeek.TUESDAY, DayOfWeek.THURSDAY))
+                .calendarios(List.of(novoCalendario))
+                .rota(novaRota)
+                .motorista(novoMotorista)
+                .veiculo(novoVeiculo)
+                .monitor(novoMonitor)
+                .alunos(List.of(novoAluno))
+                .grupoChecklistInicial(novoCheckIni)
+                .grupoChecklistFinal(novoCheckFim)
+                .build());
+
+        Planejamento depois = porId(id);
+        assertThat(depois.getDataInicio()).isEqualTo(novaInicio);
+        assertThat(depois.getDataFim()).isEqualTo(novaFim);
+        assertThat(depois.getHoraViagem()).isEqualTo(LocalTime.of(10, 30));
+        assertThat(depois.getDiasDaSemana()).containsExactly(DayOfWeek.TUESDAY, DayOfWeek.THURSDAY);
+        assertThat(depois.getCalendarioIds()).containsExactly(novoCalendario);
+        assertThat(depois.getRotaId()).isEqualTo(novaRota);
+        assertThat(depois.getMotoristaId()).isEqualTo(novoMotorista);
+        assertThat(depois.getVeiculoId()).isEqualTo(novoVeiculo);
+        assertThat(depois.getMonitorId()).isEqualTo(novoMonitor);
+        assertThat(depois.getPassageiros())
+                .hasSize(1)
+                .first()
+                .matches(p -> p.getPassageiroId().equals(novoAluno));
+        assertThat(depois.getGrupoChecklistInicialId()).isEqualTo(novoCheckIni);
+        assertThat(depois.getGrupoChecklistFinalId()).isEqualTo(novoCheckFim);
+    }
+
+    @Test
     @DisplayName("Duplicar copia agenda/equipe/veículo/rota e só alunos ativos, em EM_ANALISE")
     void duplicarCopiaAtivos() {
         UUID ativoId = UUID.randomUUID();
