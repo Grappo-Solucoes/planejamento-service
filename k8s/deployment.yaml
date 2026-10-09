@@ -1,0 +1,63 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: planejamento-service
+  namespace: busco
+  labels:
+    app.kubernetes.io/name: planejamento-service
+    app.kubernetes.io/part-of: busco
+spec:
+  # 2 réplicas: consumidores competem na mesma fila e o inbox deduplica por eventId;
+  # o publisher da outbox é at-least-once (duplicatas são absorvidas pelo inbox).
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: planejamento-service
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: planejamento-service
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: planejamento-service
+          image: registry.example.com/busco/planejamento-service:0.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: planejamento-service-config
+            - secretRef:
+                name: planejamento-service-secrets
+          # Probes do K8s (tarefa 7.2): grupos dedicados do Actuator, habilitados em
+          # application.properties (management.endpoint.health.probes.enabled=true).
+          # Atenção: /actuator/** exige JWT neste serviço (service-runtime D6); ver README.
+          startupProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 5
+            failureThreshold: 30
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false

@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: planejamento-service-config
+  namespace: busco
+  labels:
+    app.kubernetes.io/name: planejamento-service
+    app.kubernetes.io/part-of: busco
+data:
+  # Perfil de integração: desliga o auto-processamento local
+  # (src/main/resources/application-integration.properties).
+  SPRING_PROFILES_ACTIVE: "integration"
+
+  # Datasource — o schema agendamento pertence exclusivamente a este serviço.
+  # O schema é criado/validado pelo Flyway no boot (spring.jpa.hibernate.ddl-auto=validate).
+  # Observação: application.properties fixa sslmode=require; o Postgres do cluster
+  # precisa apresentar TLS ou a operação deve sobrescrever
+  # SPRING_DATASOURCE_HIKARI_DATA_SOURCE_PROPERTIES_SSLMODE (ver README).
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://postgres:5432/planejamento"
+  SPRING_DATASOURCE_USERNAME: "planejamento"
+  SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: "org.hibernate.dialect.PostgreSQLDialect"
+
+  # Flyway: aplica apenas o schema agendamento (baseline-version=0).
+  SPRING_FLYWAY_ENABLED: "true"
+
+  # Redis
+  REDIS_HOST: "redis"
+  REDIS_PORT: "6379"
+
+  # RabbitMQ — topologia do contrato v1 (docs/events/v1/CONTRACT.md §1):
+  # consome planejamento.exchange -> planejamento.commands.v1;
+  # publica planejamento.events.exchange -> busco-api.planejamento.v1 (via outbox).
+  RABBITMQ_HOST: "rabbitmq"
+  RABBITMQ_PORT: "5672"
+  RABBITMQ_USER: "planejamento"
+
+  # Tenant fixo da instalação (o claim tenant_id do token tem precedência).
+  TENANT_ID: "00000000-0000-0000-0000-000000000001"
+
+  # HTTP
+  SERVER_PORT: "8080"
