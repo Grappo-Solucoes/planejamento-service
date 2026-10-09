@@ -128,6 +128,13 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
+        <!-- Exporter Prometheus: sem este registry o /actuator/prometheus nao e registrado (404)
+             e a observabilidade do servico fica incompleta. Versao gerida pelo BOM do Spring Boot. -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+
         <!-- Spring Security -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

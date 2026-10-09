@@ -98,6 +98,14 @@ class SegurancaHS256IT {
     }
 
     @Test
+    @DisplayName("Endpoint /actuator/prometheus registrado responde 200 com token válido")
+    void prometheusComTokenValidoRetorna200() throws Exception {
+        mockMvc.perform(get("/actuator/prometheus")
+                        .header("Authorization", "Bearer " + token(SEGREDO_BASE64URL)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     @DisplayName("Assinatura inválida retorna 401")
     void assinaturaInvalidaRetorna401() throws Exception {
         String outroSegredo = Base64.getUrlEncoder().withoutPadding()
