@@ -1,5 +1,6 @@
 package br.com.busco.planejamento.infra.rest.advice;
 
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +31,12 @@ public class ExceptionAdvice {
     @ExceptionHandler(IllegalStateException.class)
     public ResponseEntity<ExceptionResponse> conflict(Exception exception) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ExceptionResponse.from(exception));
+    }
+
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<ExceptionResponse> notFound(EntityNotFoundException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ExceptionResponse.from(exception));
     }
 

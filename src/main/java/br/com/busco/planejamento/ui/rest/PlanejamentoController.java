@@ -1,70 +1,92 @@
 package br.com.busco.planejamento.ui.rest;
 
 import br.com.busco.planejamento.app.PlanejamentoService;
-import br.com.busco.planejamento.app.cmd.*;
-import br.com.busco.planejamento.domain.PlanejamentoLote;
-import br.com.busco.planejamento.sk.ids.PlanejamentoLoteId;
+import br.com.busco.planejamento.app.cmd.CancelarPlanejamento;
+import br.com.busco.planejamento.app.cmd.DuplicarPlanejamento;
+import br.com.busco.planejamento.app.cmd.EditarPlanejamento;
+import br.com.busco.planejamento.app.cmd.PlanejarViagem;
+import br.com.busco.planejamento.app.cmd.ValidarPlanejamento;
+import br.com.busco.planejamento.sk.ids.PlanejamentoId;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
+import lombok.NonNull;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.net.URI;
 import java.util.UUID;
 
+import static org.springframework.web.servlet.support.ServletUriComponentsBuilder.fromCurrentRequest;
+
+/**
+ * Escritas do planejamento (paridade com
+ * {@code br.com.grappo.bus.core.planejamento.ui.rest.PlanejamentoController}:
+ * mesmos paths, verbos, payloads e status).
+ */
 @RestController
-@RequestMapping("/api/planejamentos")
+@RequestMapping("/api/planejamento")
 @AllArgsConstructor
 public class PlanejamentoController {
 
-    private final PlanejamentoService planejamentoService;
+    private final PlanejamentoService service;
 
     @PostMapping
-    public ResponseEntity<Void> criarPlanejamento(@Valid @RequestBody CriarPlanejamentoLote cmd) {
-        PlanejamentoLoteId id = planejamentoService.handle(cmd);
+    public ResponseEntity<Void> cadastrar(@RequestBody @Valid @NonNull PlanejarViagem cmd) {
+        service.handle(cmd);
 
-        return ResponseEntity
-                .created(URI.create("/api/planejamentos/" + id.toUUID()))
+        return ResponseEntity.created(fromCurrentRequest().build().toUri()).build();
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Void> editar(@PathVariable UUID id,
+                                       @RequestBody @Valid @NonNull EditarPlanejamento cmd) {
+        cmd.setId(id);
+        service.handle(cmd);
+
+        return ResponseEntity.created(fromCurrentRequest()
+                .path("/").path(id.toString()).build().toUri())
                 .build();
     }
 
-    @PostMapping("/{id}/confirmar")
-    public ResponseEntity<Void> confirmarPlanejamento(@PathVariable UUID id) {
-        ConfirmarPlanejamentoLote cmd = ConfirmarPlanejamentoLote.builder()
-                .id(PlanejamentoLoteId.fromString(id.toString()))
+    @PatchMapping("/{id}/validar")
+    public ResponseEntity<Void> validar(@PathVariable UUID id) {
+        ValidarPlanejamento cmd = ValidarPlanejamento.builder().id(id).build();
+        service.handle(cmd);
+
+        return ResponseEntity.created(fromCurrentRequest()
+                        .path("/").path(id.toString()).build().toUri())
                 .build();
-
-        PlanejamentoLoteId planejamentoId = planejamentoService.handle(cmd);
-
-        return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/{id}/cancelar")
-    public ResponseEntity<Void> cancelarPlanejamento(@PathVariable UUID id) {
-        CancelarPlanejamentoLote cmd = CancelarPlanejamentoLote.builder()
-                .id(PlanejamentoLoteId.fromString(id.toString()))
+    @PatchMapping("/{id}/cancelar")
+    public ResponseEntity<Void> cancelar(@PathVariable UUID id) {
+        CancelarPlanejamento cmd = CancelarPlanejamento.builder().id(id).build();
+        service.handle(cmd);
+
+        return ResponseEntity.created(fromCurrentRequest()
+                        .path("/").path(id.toString()).build().toUri())
                 .build();
-
-        PlanejamentoLoteId planejamentoId = planejamentoService.handle(cmd);
-
-        return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/{id}/suspender")
-    public ResponseEntity<Void> suspenderPlanejamento(@PathVariable UUID id) {
-        SuspenderPlanejamentoLote cmd = SuspenderPlanejamentoLote.builder()
-                .id(PlanejamentoLoteId.fromString(id.toString()))
+    @PatchMapping("/{id}/duplicar")
+    public ResponseEntity<Void> duplicar(@PathVariable UUID id) {
+        DuplicarPlanejamento cmd = DuplicarPlanejamento.builder().id(id).build();
+        service.handle(cmd);
+
+        return ResponseEntity.created(fromCurrentRequest()
+                        .path("/").path(id.toString()).build().toUri())
                 .build();
-
-        PlanejamentoLoteId planejamentoId = planejamentoService.handle(cmd);
-
-        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Void> buscarPorId(@PathVariable UUID id) {
-        PlanejamentoLote planejamento = planejamentoService.buscarPorId(PlanejamentoLoteId.fromString(id.toString()));
-
-        return ResponseEntity.ok().build();
+    public ResponseEntity<PlanejamentoResponse> buscarPorId(@PathVariable UUID id) {
+        return ResponseEntity.ok(PlanejamentoResponse.of(
+                service.buscarPorId(PlanejamentoId.fromString(id.toString()))));
     }
 }
