@@ -15,10 +15,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Map;
 import java.util.UUID;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -125,6 +127,25 @@ class PlanejamentoControllerTest {
                 .andExpect(status().isCreated());
 
         mvc.perform(patch("/api/planejamento/" + UUID.randomUUID() + "/duplicar"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("GET /{id} responde 200 com o recurso; inexistente responde 404")
+    void buscarResponde200E404() throws Exception {
+        String id = criarPlanejamento();
+
+        mvc.perform(get("/api/planejamento/" + id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(id))
+                .andExpect(jsonPath("$.status").value("EM_ANALISE"))
+                .andExpect(jsonPath("$.horaViagem").value("07:30:00"))
+                .andExpect(jsonPath("$.diasDaSemana").isArray())
+                .andExpect(jsonPath("$.rotaId").isNotEmpty())
+                .andExpect(jsonPath("$.passageiros").isArray())
+                .andExpect(jsonPath("$.calendarioIds").isArray());
+
+        mvc.perform(get("/api/planejamento/" + UUID.randomUUID()))
                 .andExpect(status().isNotFound());
     }
 }

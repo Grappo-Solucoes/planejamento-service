@@ -6,10 +6,12 @@ import br.com.busco.planejamento.app.cmd.DuplicarPlanejamento;
 import br.com.busco.planejamento.app.cmd.EditarPlanejamento;
 import br.com.busco.planejamento.app.cmd.PlanejarViagem;
 import br.com.busco.planejamento.app.cmd.ValidarPlanejamento;
+import br.com.busco.planejamento.sk.ids.PlanejamentoId;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.NonNull;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -80,5 +82,11 @@ public class PlanejamentoController {
         return ResponseEntity.created(fromCurrentRequest()
                         .path("/").path(id.toString()).build().toUri())
                 .build();
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<PlanejamentoResponse> buscarPorId(@PathVariable UUID id) {
+        return ResponseEntity.ok(PlanejamentoResponse.of(
+                service.buscarPorId(PlanejamentoId.fromString(id.toString()))));
     }
 }
