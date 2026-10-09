@@ -18,7 +18,9 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -98,11 +100,13 @@ class SegurancaHS256IT {
     }
 
     @Test
-    @DisplayName("Endpoint /actuator/prometheus registrado responde 200 com token válido")
+    @DisplayName("Endpoint /actuator/prometheus registrado responde 200 com token válido e expõe métricas")
     void prometheusComTokenValidoRetorna200() throws Exception {
         mockMvc.perform(get("/actuator/prometheus")
                         .header("Authorization", "Bearer " + token(SEGREDO_BASE64URL)))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("# HELP")))
+                .andExpect(content().string(containsString("jvm_memory_used_bytes")));
     }
 
     @Test
